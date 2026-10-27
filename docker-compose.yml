@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: codebase-copilot-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${COPILOT_DB_USER:-copilot_user}
+      POSTGRES_PASSWORD: ${COPILOT_DB_PASSWORD:?Set COPILOT_DB_PASSWORD in the project .env file}
+      POSTGRES_DB: ${COPILOT_DB_NAME:-copilot_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${COPILOT_DB_USER:-copilot_user} -d ${COPILOT_DB_NAME:-copilot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
