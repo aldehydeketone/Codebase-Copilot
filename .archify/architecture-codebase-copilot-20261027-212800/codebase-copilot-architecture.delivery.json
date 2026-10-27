@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "41aa5c5a-5269-4102-964f-e63f067dcb58",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\project\\CodebaseCopilot\\.archify\\architecture-codebase-copilot-20261027-212800\\candidate.json",
+  "output": "D:\\project\\CodebaseCopilot\\.archify\\architecture-codebase-copilot-20261027-212800\\codebase-copilot-architecture.html",
+  "specification": {
+    "sha256": "30867becc0a641dc3601a9d2be771a870696427107974b7c52e1c1f2408411e6",
+    "bytes": 4082
+  },
+  "artifact": {
+    "sha256": "e29eab63ecd884856e01fd9e4a67dfcaab3306f7ecbc503a05fc2921e881e531",
+    "bytes": 844091
+  }
+}

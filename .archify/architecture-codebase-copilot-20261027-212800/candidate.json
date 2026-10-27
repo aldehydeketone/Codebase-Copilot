@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Codebase Copilot System Architecture",
+    "subtitle": "Spring Boot 3.5, React 19, pgvector & Local Ollama RAG Pipeline",
+    "output": ".archify/architecture-codebase-copilot-20261027-212800/codebase-copilot-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Developer",
+      "sublabel": "Browser Client",
+      "pos": [40, 235],
+      "size": [140, 64]
+    },
+    {
+      "id": "frontend",
+      "type": "frontend",
+      "label": "React 19 Workbench",
+      "sublabel": "Vite :3000 (Proxy /api)",
+      "pos": [240, 235],
+      "size": [160, 64]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Spring Boot API",
+      "sublabel": "REST Controllers :8080",
+      "pos": [480, 235],
+      "size": [170, 64]
+    },
+    {
+      "id": "ingestion",
+      "type": "backend",
+      "label": "Ingestion Pipeline",
+      "sublabel": "JavaParser AST Chunker",
+      "pos": [480, 110],
+      "size": [170, 64]
+    },
+    {
+      "id": "rag",
+      "type": "backend",
+      "label": "RAG Chat & Ranker",
+      "sublabel": "Grounded Citations",
+      "pos": [480, 360],
+      "size": [170, 64]
+    },
+    {
+      "id": "ollama_embed",
+      "type": "cloud",
+      "label": "Ollama Embeddings",
+      "sublabel": "nomic-embed-text (768d)",
+      "pos": [740, 110],
+      "size": [190, 64]
+    },
+    {
+      "id": "ollama_chat",
+      "type": "cloud",
+      "label": "Ollama Chat LLM",
+      "sublabel": "qwen3:8b (Grounded Q&A)",
+      "pos": [740, 210],
+      "size": [190, 64]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL + pgvector",
+      "sublabel": "HNSW Cosine Index :5433",
+      "pos": [740, 360],
+      "size": [190, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Spring Boot Application (:8080)",
+      "wraps": ["api", "ingestion", "rag"]
+    },
+    {
+      "kind": "region",
+      "label": "Local Ollama AI Engine (:11434)",
+      "wraps": ["ollama_embed", "ollama_chat"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-user-fe",
+      "from": "users",
+      "to": "frontend",
+      "label": "HTTP :3000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn-fe-api",
+      "from": "frontend",
+      "to": "api",
+      "label": "REST /api",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn-api-ingest",
+      "from": "api",
+      "to": "ingestion",
+      "label": "Repo Import",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn-api-rag",
+      "from": "api",
+      "to": "rag",
+      "label": "Chat / Search",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "conn-ingest-embed",
+      "from": "ingestion",
+      "to": "ollama_embed",
+      "label": "Vectorize Chunks"
+    },
+    {
+      "id": "conn-rag-db",
+      "from": "rag",
+      "to": "db",
+      "label": "Top-K Similarity"
+    },
+    {
+      "id": "conn-rag-chat",
+      "from": "rag",
+      "to": "ollama_chat",
+      "label": "Contextual Prompt",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Interactive Client",
+      "items": [
+        "React 19 + TypeScript + Vite running on port 3000",
+        "Repository Management, Semantic Search, and RAG Chat panels",
+        "Source Inspector with clickable chunk citations"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Core Services & Safety",
+      "items": [
+        "Spring Boot 3.5.16 + Java 21 REST backend",
+        "AST-based Java chunker preserving method boundaries",
+        "Path traversal guard rejecting unauthorized roots"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Vector Search & AI",
+      "items": [
+        "PostgreSQL 16 with pgvector & HNSW cosine index",
+        "Ollama nomic-embed-text for 768-dimensional embeddings",
+        "Ollama qwen3:8b for grounded generation with prompt defense"
+      ]
+    }
+  ]
+}
