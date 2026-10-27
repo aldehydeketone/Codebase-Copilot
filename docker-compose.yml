@@ -1,20 +1,134 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CodebaseCopilot – Docker Compose
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Quick start (copy .env.example → .env and fill in your password first):
+#
+#   docker compose up -d
+#
+# Stopping without losing data:
+#   docker compose stop          # pauses containers, volumes intact
+#   docker compose down          # removes containers, volumes intact
+#
+# ⚠️  NEVER run "docker compose down -v" — that deletes the database volume.
+#
+# Ollama note:
+#   Ollama is assumed to run on the HOST machine (Windows service on port 11434).
+#   The backend container reaches it via host.docker.internal.
+#   If you want to run Ollama inside Docker, enable the "ollama" profile:
+#     docker compose --profile ollama up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
 services:
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────────────────────
   db:
     image: pgvector/pgvector:pg16
     container_name: codebase-copilot-db
     ports:
-      - "5433:5432"
+      # Publish on 127.0.0.1 only — don't expose to every network interface
+      - "127.0.0.1:${COPILOT_DB_EXTERNAL_PORT:-5433}:5432"
     environment:
-      POSTGRES_USER: ${COPILOT_DB_USER:-copilot_user}
-      POSTGRES_PASSWORD: ${COPILOT_DB_PASSWORD:?Set COPILOT_DB_PASSWORD in the project .env file}
-      POSTGRES_DB: ${COPILOT_DB_NAME:-copilot_db}
+      POSTGRES_USER:     ${COPILOT_DB_USER:-copilot_user}
+      POSTGRES_PASSWORD: ${COPILOT_DB_PASSWORD:?Set COPILOT_DB_PASSWORD in .env}
+      POSTGRES_DB:       ${COPILOT_DB_NAME:-copilot_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${COPILOT_DB_USER:-copilot_user} -d ${COPILOT_DB_NAME:-copilot_db}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
 
+  # ── Spring Boot backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codebase-copilot-backend
+    ports:
+      - "127.0.0.1:${BACKEND_EXTERNAL_PORT:-8080}:8080"
+    environment:
+      # Database — point at the "db" service by its Compose service name
+      COPILOT_DB_HOST:     db
+      COPILOT_DB_PORT:     5432
+      COPILOT_DB_NAME:     ${COPILOT_DB_NAME:-copilot_db}
+      COPILOT_DB_USER:     ${COPILOT_DB_USER:-copilot_user}
+      COPILOT_DB_PASSWORD: ${COPILOT_DB_PASSWORD:?Set COPILOT_DB_PASSWORD in .env}
+
+      # Ollama — host.docker.internal resolves to the Windows host on Docker Desktop
+      # NOTE: Do NOT use ${OLLAMA_BASE_URL} here — the .env has localhost which won't
+      # work from inside a container. Always use host.docker.internal for Docker builds.
+      OLLAMA_BASE_URL:          http://host.docker.internal:11434
+      OLLAMA_CHAT_MODEL:        ${OLLAMA_CHAT_MODEL:-qwen3.5:4b}
+      OLLAMA_EMBED_MODEL:       ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      OLLAMA_CHAT_KEEP_ALIVE:   ${OLLAMA_CHAT_KEEP_ALIVE:-10m}
+      OLLAMA_CHAT_READ_TIMEOUT: ${OLLAMA_CHAT_READ_TIMEOUT:-420s}
+
+      # CORS — allow the frontend container origin
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+    volumes:
+      # Persist imported repositories across container restarts
+      - repo_data:/app/repositories
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health | grep -q UP || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+
+  # ── React / Nginx frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: codebase-copilot-frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_EXTERNAL_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Ollama (optional – only starts with --profile ollama) ─────────────────
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    container_name: codebase-copilot-ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # GPU passthrough (uncomment if you have an NVIDIA GPU with the container toolkit)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    restart: unless-stopped
+    # One-time model pull (run manually after starting the ollama service):
+    #   docker compose --profile ollama exec ollama ollama pull qwen3.5:4b
+    #   docker compose --profile ollama exec ollama ollama pull nomic-embed-text
+
+# ── Named volumes ──────────────────────────────────────────────────────────
 volumes:
   pgdata:
+    # This is the existing named volume that holds real user data.
+    # Docker will re-use it automatically if it already exists.
+    name: codebasecopilot_pgdata
+    external: true
+
+  repo_data:
+    name: codebasecopilot_repo_data
+    external: true
+
+  ollama_data:
+    name: codebasecopilot_ollama_data

@@ -1,112 +1,223 @@
 # CodebaseCopilot
 
-## Local development on Windows
+A niche developer tool for understanding and searching Java codebases using natural language — built with Spring Boot, Spring AI, pgvector, and React.
 
-Prerequisites: Docker Desktop with the Linux container engine, Java 21, and Maven (or the Maven Wrapper if one is added to this project).
+---
 
-1. Copy `.env.example` to `.env` in the repository root. Keep `.env` local; it is ignored by Git. Set the database values there:
+## Quick Start with Docker (Recommended)
 
-   ```dotenv
-   COPILOT_DB_HOST=127.0.0.1
-   COPILOT_DB_PORT=5433
-   COPILOT_DB_NAME=copilot_db
-   COPILOT_DB_USER=copilot_user
-   COPILOT_DB_PASSWORD=your-local-password
-   ```
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Linux container mode)
+- [Ollama](https://ollama.com/) installed and running on your machine (Windows service on port 11434)
+- Git
 
-   Use the password for the existing `copilot_user` role in the Docker database. Choose a strong local password and use the same value in the Docker and application configuration. Host, port, username, and database name can be changed in this file; the host application connects to the mapped host port.
-
-2. The application ignores legacy `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` environment variables so they cannot redirect the project to another database. Remove any old Windows User or System definitions as cleanup and restart terminals and the IDE after changing them. Use the project-specific `COPILOT_DB_*` names below.
-
-3. Start PostgreSQL with pgvector:
-
-   ```powershell
-   docker compose up -d db
-   docker compose ps
-   ```
-
-   Compose reads the root `.env` for its container settings. It does not export those values into a separate Maven process; `application.properties` explicitly imports `.env` as a properties file when Spring Boot starts.
-
-4. Build and verify:
-
-   ```powershell
-   mvn clean verify
-   ```
-
-5. Install and start Ollama models used by the application:
-
-   ```powershell
-   ollama pull qwen3.5:4b
-   ollama pull nomic-embed-text
-   ollama serve
-   ```
-
-   Keep the chat model selected in the ignored project `.env` using `OLLAMA_CHAT_MODEL`; the example defaults to `qwen3.5:4b`. The chat request disables reasoning mode and limits output to 384 tokens. Ollama may need several minutes to load a model on a CPU-only machine; this was measured at up to 346 seconds on an Intel i5-1135G7 with 16 GB RAM. Once warm, repeated checkout/inventory calls completed in about 14–21 seconds. Models are retained for 10 minutes after use. The backend and frontend both allow up to 420 seconds for chat; the API is non-streaming, so the first token is not shown while inference runs.
-
-6. Start the application from the repository root so the project `.env` is found:
-
-   ```powershell
-   mvn spring-boot:run
-   ```
-
-   Spring Boot runs Flyway migrations at startup. Confirm the app starts successfully and check migration state and application tables with:
-
-   ```powershell
-   docker compose exec db psql -U copilot_user -d copilot_db -c "SELECT version, success FROM flyway_schema_history ORDER BY installed_rank;"
-   docker compose exec db psql -U copilot_user -d copilot_db -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
-   docker compose exec db psql -U copilot_user -d copilot_db -c "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname;"
-   ```
-
-## Phase 2 API
-
-Import and index a local Java repository:
+### 1. Pull Ollama models (one-time)
 
 ```powershell
-$result = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/repositories/import -ContentType 'application/json' -Body (@{ path = 'D:\src\example-java-repo'; name = 'example-java-repo' } | ConvertTo-Json)
-$result | ConvertTo-Json -Depth 5
+ollama pull qwen3.5:4b
+ollama pull nomic-embed-text
 ```
 
-The response includes the repository ID and indexing status. Successful imports are `COMPLETED`; invalid paths return 400/404; parser, filesystem, or embedding failures return 422 and persist `FAILED` with `errorDetails`.
+> **Note:** `qwen3.5:4b` requires ~4 GB RAM for inference. On a CPU-only machine (e.g., i5/16 GB), cold-start takes ~60-340 s; warm repeated queries take ~10-25 s.
 
-Run semantic search against a repository:
+### 2. Configure environment
 
 ```powershell
-$body = @{ query = 'Where is the greeting message created?'; repositoryId = $result.id; limit = 5 } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/search -ContentType 'application/json' -Body $body | ConvertTo-Json -Depth 5
+Copy-Item .env.example .env
+# Open .env and set COPILOT_DB_PASSWORD to a strong password
+notepad .env
 ```
 
-Search embeds the query with the configured Ollama `nomic-embed-text` model and runs cosine-distance ordering in PostgreSQL through pgvector.
-
-## Tests
-
-`mvn clean verify` runs the H2 context test and unit tests for parser line ranges, excluded directories, invalid syntax, and embedding dimension validation. Embedding unit tests use a Mockito model and do not persist vectors.
-
-The real integration test is intentionally opt-in because it needs Docker PostgreSQL on port 5433 and a running Ollama service with `nomic-embed-text` installed:
+### 3. Start all services
 
 ```powershell
-mvn "-Dtest=RealPipelineIntegrationTest" -DrealIntegration=true test
+docker compose up -d
+docker compose ps      # verify all containers are healthy
 ```
 
-That test starts the HTTP server, calls repository import and semantic search, verifies PostgreSQL row counts and `vector_dims(embedding)=768`, checks repeat-import idempotency and error status persistence, then deletes only its temporary database records.
+This starts:
+| Container | Port | Purpose |
+|---|---|---|
+| `codebase-copilot-db` | `127.0.0.1:5433` | PostgreSQL 16 + pgvector |
+| `codebase-copilot-backend` | `127.0.0.1:8080` | Spring Boot API |
+| `codebase-copilot-frontend` | `127.0.0.1:3000` | React UI (Nginx) |
 
-For custom database names or users, substitute your `.env` values in the `psql` commands above. The database container is published on `127.0.0.1:5433`; a separate local PostgreSQL server may continue using `5432`. The named `pgdata` volume stores database data. Do not run `docker compose down -v` when you need to preserve that data.
+### 4. Open the app
 
-## Frontend workbench
+Navigate to **http://localhost:3000** in your browser.
 
-The `frontend` folder contains the React 19 + TypeScript + Vite single-page workbench for importing repositories, semantic search, chat, and source inspection. The API exposes indexed Java-file and chunk counts, but only returns selected code snippets rather than complete file contents. Its Chat, Search, and Repositories views are client-side navigation states; there are no separate URL routes to refresh or bookmark. Start Spring Boot on port 8080 (use a separate PowerShell window):
+### 5. Import a Java repository
+
+Click **[+ Import repository]** and provide the absolute path to a Java project on your machine (e.g. `D:\src\my-java-app`). Indexing runs in the background; status updates appear in the UI.
+
+---
+
+## Stopping and Starting
 
 ```powershell
-cd D:\project\CodebaseCopilot
+# Pause containers — volumes and data are preserved
+docker compose stop
+
+# Resume
+docker compose start
+
+# Remove containers but keep data volumes
+docker compose down
+
+# ⚠️  NEVER run this — it deletes the database permanently
+# docker compose down -v
+```
+
+---
+
+## Environment Variables
+
+All configuration is via `.env` in the project root (gitignored). See [`.env.example`](.env.example) for all variables.
+
+| Variable | Default | Description |
+|---|---|---|
+| `COPILOT_DB_HOST` | `127.0.0.1` | PostgreSQL host (local dev only; Docker uses `db`) |
+| `COPILOT_DB_PORT` | `5433` | PostgreSQL port |
+| `COPILOT_DB_NAME` | `copilot_db` | Database name |
+| `COPILOT_DB_USER` | `copilot_user` | Database user |
+| `COPILOT_DB_PASSWORD` | *(required)* | Database password |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
+| `OLLAMA_CHAT_MODEL` | `qwen3.5:4b` | Chat model |
+| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model (768-dim) |
+| `OLLAMA_CHAT_KEEP_ALIVE` | `10m` | Keep model in RAM after last call |
+| `OLLAMA_CHAT_READ_TIMEOUT` | `420s` | HTTP read timeout for chat |
+| `BACKEND_EXTERNAL_PORT` | `8080` | Host port for backend (optional override) |
+| `FRONTEND_EXTERNAL_PORT` | `3000` | Host port for frontend (optional override) |
+
+---
+
+## Local Development (without Docker for backend/frontend)
+
+Prerequisites: Java 21, Maven, Node.js 20+, Docker Desktop (for the DB container).
+
+```powershell
+# 1. Start the database
+docker compose up -d db
+
+# 2. Build and test backend
+mvn clean verify
+
+# 3. Start backend
 mvn spring-boot:run
-```
 
-Then start the workbench in a second PowerShell window:
-
-```powershell
-cd D:\project\CodebaseCopilot\frontend
+# 4. Start frontend dev server (separate terminal)
+cd frontend
 npm ci
-Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open `http://127.0.0.1:3000`. The Vite dev server proxies `/api` calls to `http://127.0.0.1:8080` during development. Run `npm test` for mocked frontend interaction tests and `npm run build` for the production build. Repository paths are read by Spring Boot, so it must run on the same Windows machine as the source folders. The root `DESIGN.md` and `.agents/skills/hallmark` guide the frontend’s cream-and-monospace workbench style.
+Open `http://127.0.0.1:3000`. The Vite dev server proxies `/api` to `http://127.0.0.1:8080`.
+
+---
+
+## API Reference
+
+### Import a repository
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/repositories/import `
+  -ContentType 'application/json' `
+  -Body '{"path":"D:\\src\\my-java-app","name":"my-java-app"}'
+```
+
+Response includes `id` (UUID), `status` (`COMPLETED`, `COMPLETED_EMPTY`, `FAILED`), and counts.
+
+### Semantic search
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/search `
+  -ContentType 'application/json' `
+  -Body '{"query":"Where is the order total calculated?","repositoryId":"<uuid>","limit":5}'
+```
+
+### RAG chat
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/chat `
+  -ContentType 'application/json' `
+  -Body '{"question":"How does authentication work?","repositoryId":"<uuid>","chunks":[...]}'
+```
+
+### Health check
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/health
+```
+
+---
+
+## Tests
+
+```powershell
+# Backend unit + integration tests (H2 in-memory, no external services required)
+mvn clean verify
+
+# Backend real-pipeline integration test (requires live PostgreSQL + Ollama)
+mvn "-Dtest=RealPipelineIntegrationTest" -DrealIntegration=true test
+
+# Frontend unit tests
+cd frontend
+npx vitest run --pool=forks
+
+# Frontend production build
+npm run build
+```
+
+---
+
+## Docker Build Only
+
+```powershell
+docker compose build          # build all images
+docker compose build backend  # rebuild only the backend image
+```
+
+---
+
+## Database Backup
+
+```powershell
+docker compose exec db pg_dump -U copilot_user copilot_db > backups\backup_$(Get-Date -Format yyyyMMdd_HHmmss).dump
+```
+
+---
+
+## Architecture
+
+```
+Browser (React/Vite)
+      │  HTTP /api/*
+      ▼
+  Nginx (frontend container, port 3000)
+      │  proxy_pass http://backend:8080/api/
+      ▼
+  Spring Boot (backend container, port 8080)
+      │                        │
+      ▼                        ▼
+  PostgreSQL + pgvector    Ollama (host machine, port 11434)
+  (db container, port 5432) accessed via host.docker.internal
+```
+
+- **Parsing:** Java AST via JDK compiler API → methods, classes, line ranges
+- **Embedding:** `nomic-embed-text` (768-dim) via Ollama
+- **Search:** cosine distance via pgvector with a 0.52 minimum score floor
+- **Ranking:** `QueryAwareSearchRanker` boosts implementation code over declarations
+- **Chat:** Spring AI `RagChatService` with grounded citation validation
+
+---
+
+## Placement Demo Notes
+
+To run a live demo without a public server:
+
+1. Start everything with `docker compose up -d`
+2. Verify `http://localhost:3000` loads and `/api/health` returns `UP`
+3. Import a prepared Java repository before the demo (indexing takes ~10-60 s depending on size)
+4. Keep the model warm: run one test chat query beforehand
+5. For a remote demo over a video call, share your screen — no deployment needed
+6. Optional: expose via ngrok: `ngrok http 3000` (ngrok account required)

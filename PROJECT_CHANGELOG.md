@@ -1,5 +1,55 @@
 # Project Changelog & Issue Tracker — Codebase Intelligent Copilot
 
+## TASK-012 — Dockerization & Placement-Demo Readiness (2026-10-28)
+
+### Summary
+Full Docker setup created and validated. All three application containers (PostgreSQL, backend, frontend) built and configured. Existing database data preserved (`codebasecopilot_pgdata` volume, 4 repos / 127 files / 342 chunks). Documentation updated.
+
+### Phase 1 – Live verification (pre-Docker baseline)
+- **DB backup created:** `backups/copilot_db_pre_task012_20261027_224020.dump` (2.55 MB)
+- **Baseline confirmed:** 4 repos, 127 files, 342 chunks (unchanged throughout task)
+- **Health:** `GET /api/health` → `{"status":"UP"}` ✅
+- **Known-topic search** (`POST /api/search` — "Where is the REST chat controller implemented?"): top result `ChatController.java` at score 0.609 ✅
+- **Absent-topic search** ("quantum teleportation and interstellar propulsion physics"): empty array ✅
+- **RAG chat:** HTTP 200, answer grounded to `ChatController.java:17-33` and `RagChatService.java:42-141`; cold-start 141,843 ms (CPU-only `qwen3.5:4b`) ✅
+- **Automated tests:** `mvn clean verify` — 26 passed, 0 failed, 1 skipped; `npx vitest run --pool=forks` — 5 passed; `npm run build` — success ✅
+
+### Phase 2 – Docker files created
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Backend: Maven 3.9 + JDK 21 build stage → `eclipse-temurin:21-jre-alpine` runtime; non-root user; `--XX:MaxRAMPercentage=75` |
+| `frontend/Dockerfile` | Frontend: Node 20 Alpine build → `nginx:1.27-alpine` runtime; no hardcoded backend URL |
+| `frontend/nginx.conf` | SPA fallback; `/api/` proxy to `backend:8080`; 420 s proxy timeout; asset caching |
+| `docker-compose.yml` | All services: `db`, `backend`, `frontend`; optional `ollama` profile; `external: true` for existing `pgdata` volume |
+| `.dockerignore` | Excludes `target/`, `node_modules/`, `.env`, backups, logs |
+| `.env.example` | Updated with Docker port override variables |
+| `README.md` | Complete rewrite: Docker quickstart, env var table, API examples, architecture diagram, demo notes |
+
+### Key design decisions
+- **Ollama:** Runs as a Windows host service (not in Docker). Backend container reaches it via `host.docker.internal:11434`. Optional Compose `ollama` profile provided for future use.
+- **Volume safety:** Existing `codebasecopilot_pgdata` declared as `external: true` — Docker Compose will reuse it, never recreate it.
+- **No hardcoded localhost in frontend image:** Nginx proxies `/api/` to `backend:8080` at runtime.
+- **Ports bound to 127.0.0.1:** DB, backend, and frontend ports are not exposed to all network interfaces.
+
+### Phase 5 – Automated test results (confirmed)
+- Backend: `mvn clean verify` — **26 passed, 0 failed, 1 skipped** (EXIT 0)
+- Frontend: `npx vitest run --pool=forks` — **5 passed, 0 failed** (EXIT 0)
+- Frontend build: `npm run build` — **EXIT 0** (dist: 368 KB JS, 22 KB CSS)
+- Docker config: `docker compose config --quiet` — **EXIT 0**
+
+### Phase 6 – Free deployment plan (documented, not deployed)
+- **Frontend:** Vercel (free tier, Vite React supported natively)
+- **Backend:** Railway or Render free tier (note: sleep after inactivity)
+- **PostgreSQL:** Neon free tier (5 GB persistent) or Railway PostgreSQL
+- **Ollama:** Cannot be free-hosted — `qwen3.5:4b` needs 4+ GB RAM. Recommended: run locally + ngrok tunnel during interview
+
+### Data safety
+- No `docker compose down -v` was run at any point
+- Original 4 repos / 127 files / 342 chunks preserved
+- No credentials printed or committed
+
+---
+
 ## TASK-011 — Chat latency and demo readiness (2026-10-26 to 2026-10-27)
 
 - **Finding:** qwen3:8b chat inference was CPU-bound on an i5-1135G7/16 GB machine. The checkout/inventory HTTP request was reproduced as 504 at 180,319 ms; earlier telemetry showed 101,896 ms in model inference within a 104,521 ms successful request. The exact failed Qwen request lacks Ollama load/token stage breakdown.

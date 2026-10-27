@@ -1,0 +1,36 @@
+# ── Java / Maven ──────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# ── Secrets — never bake into an image ───────────────────────────────────────
+.env
+*.env.local
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ── Project artefacts not needed in the image ─────────────────────────────────
+backups/
+spring.log
+*.log
+qa-fixtures/
+.archify/
+.hallmark/
+.agents/
