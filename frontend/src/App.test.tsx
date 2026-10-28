@@ -12,6 +12,7 @@ vi.mock('./services/api', () => ({
     importRepository: vi.fn(),
     search: vi.fn(),
     chat: vi.fn(),
+    getHealth: vi.fn(),
   },
   repositoryFromError: vi.fn(() => null),
 }));
@@ -36,6 +37,19 @@ beforeEach(() => {
   vi.mocked(api.importRepository).mockResolvedValue(repository);
   vi.mocked(api.search).mockResolvedValue([]);
   vi.mocked(api.chat).mockResolvedValue({ answer: 'No relevant context was found.', citations: [] });
+  vi.mocked(api.getHealth).mockResolvedValue({
+    status: 'OPERATIONAL',
+    timestamp: Date.now(),
+    checks: {
+      frontend: { status: 'UP', message: 'UI active' },
+      backend: { status: 'UP', latencyMs: 1, message: 'API responding' },
+      database: { status: 'UP', latencyMs: 2, message: 'PostgreSQL verified' },
+      ollama: { status: 'UP', latencyMs: 5, message: 'Ollama reachable' },
+      chatModel: { status: 'UP', model: 'qwen3.5:4b' },
+      embeddingModel: { status: 'UP', model: 'nomic-embed-text' },
+      indexing: { status: 'IDLE', totalRepositories: 1 },
+    },
+  });
 });
 
 afterEach(() => cleanup());
@@ -132,5 +146,58 @@ describe('Codebase Copilot workbench', () => {
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('404 Repository directory does not exist');
     expect(screen.queryByText(/Import response status: COMPLETED/)).not.toBeInTheDocument();
+  });
+
+  it('renders live health indicator and opens details breakdown modal with all dependency checks', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const trigger = await screen.findByRole('button', { name: /Live System Health: All Systems Operational/i });
+    expect(trigger).toBeInTheDocument();
+    expect(screen.getByText('All Systems Operational')).toBeInTheDocument();
+
+    await user.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: /Live System Health Monitor/i });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText('Frontend UI')).toBeInTheDocument();
+    expect(within(dialog).getByText('Database (PostgreSQL)')).toBeInTheDocument();
+    expect(within(dialog).getByText('Ollama Service')).toBeInTheDocument();
+    expect(within(dialog).getByText('Chat Model')).toBeInTheDocument();
+    expect(within(dialog).getByText('qwen3.5:4b')).toBeInTheDocument();
+    expect(within(dialog).getByText('Embedding Model')).toBeInTheDocument();
+    expect(within(dialog).getByText('nomic-embed-text')).toBeInTheDocument();
+    expect(within(dialog).getByText('Repository Indexing')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close health dialog' }));
+    expect(screen.queryByRole('dialog', { name: /Live System Health Monitor/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Degraded indicator when AI models or non-critical services are unavailable', async () => {
+    vi.mocked(api.getHealth).mockResolvedValueOnce({
+      status: 'DEGRADED',
+      timestamp: Date.now(),
+      checks: {
+        frontend: { status: 'UP' },
+        backend: { status: 'UP' },
+        database: { status: 'UP' },
+        ollama: { status: 'DOWN', message: 'Connection refused on port 11434' },
+        chatModel: { status: 'UNAVAILABLE', model: 'qwen3.5:4b' },
+        embeddingModel: { status: 'UNAVAILABLE', model: 'nomic-embed-text' },
+        indexing: { status: 'IDLE' },
+      },
+    });
+
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /Live System Health: Degraded/i })).toBeInTheDocument();
+    expect(screen.getByText('Degraded')).toBeInTheDocument();
+  });
+
+  it('shows Service Unavailable indicator when health endpoint fails or backend is unreachable', async () => {
+    vi.mocked(api.getHealth).mockRejectedValueOnce(new Error('Network error: Connection refused'));
+
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /Live System Health: Service Unavailable/i })).toBeInTheDocument();
+    expect(screen.getByText('Service Unavailable')).toBeInTheDocument();
   });
 });

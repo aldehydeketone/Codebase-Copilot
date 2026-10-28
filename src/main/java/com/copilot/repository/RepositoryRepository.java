@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface RepositoryRepository extends JpaRepository<Repository, UUID> {
     Optional<Repository> findBySourcePathIgnoreCase(String sourcePath);
+    long countByIndexingStatusIgnoreCase(String indexingStatus);
 }

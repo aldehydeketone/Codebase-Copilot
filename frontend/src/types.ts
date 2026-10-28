@@ -63,3 +63,31 @@ export interface SourceExcerpt {
 }
 
 export type WorkspaceView = 'chat' | 'search' | 'repositories';
+
+export type OverallHealthStatus = 'OPERATIONAL' | 'DEGRADED' | 'SERVICE_UNAVAILABLE' | 'CHECKING' | 'UNKNOWN';
+
+export interface ComponentHealth {
+  status: 'UP' | 'DOWN' | 'DEGRADED' | 'MISSING' | 'TIMEOUT' | 'UNAVAILABLE' | 'IDLE' | 'RUNNING' | 'FAILED' | 'UNKNOWN';
+  latencyMs?: number;
+  message?: string;
+  model?: string;
+  activeCount?: number;
+  failedCount?: number;
+  totalRepositories?: number;
+}
+
+export interface SystemHealthResponse {
+  status: 'OPERATIONAL' | 'DEGRADED' | 'SERVICE_UNAVAILABLE';
+  timestamp: number;
+  checks: {
+    frontend?: ComponentHealth;
+    backend?: ComponentHealth;
+    database?: ComponentHealth;
+    ollama?: ComponentHealth;
+    chatModel?: ComponentHealth;
+    embeddingModel?: ComponentHealth;
+    indexing?: ComponentHealth;
+  };
+  inferenceTest?: ComponentHealth;
+}
+

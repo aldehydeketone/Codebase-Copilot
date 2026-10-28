@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatPanel } from './components/ChatPanel';
+import { HealthMonitorModal } from './components/HealthMonitorModal';
 import { RepositoryImportDialog } from './components/RepositoryImportDialog';
 import { RepositoryPanel } from './components/RepositoryPanel';
 import { SearchPanel } from './components/SearchPanel';
 import { Sidebar } from './components/Sidebar';
 import { SourceInspector } from './components/SourceInspector';
 import { api } from './services/api';
-import type { Repository, SourceExcerpt, WorkspaceView } from './types';
+import type { OverallHealthStatus, Repository, SourceExcerpt, SystemHealthResponse, WorkspaceView } from './types';
 
 const viewTitles: Record<WorkspaceView, string> = {
   chat: 'Chat',
@@ -22,9 +23,55 @@ export default function App() {
   const [source, setSource] = useState<SourceExcerpt | null>(null);
   const [loadingRepositories, setLoadingRepositories] = useState(true);
   const [repositoryError, setRepositoryError] = useState('');
-  const [apiConnected, setApiConnected] = useState<boolean | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [notice, setNotice] = useState('');
+
+  // Live System Health Monitor State
+  const [health, setHealth] = useState<SystemHealthResponse | null>(null);
+  const [healthModalOpen, setHealthModalOpen] = useState(false);
+  const [healthRefreshing, setHealthRefreshing] = useState(false);
+  const [testingInference, setTestingInference] = useState(false);
+  const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
+  const inFlightHealthRef = useRef(false);
+
+  const pollHealth = useCallback(async (testInference = false) => {
+    if (inFlightHealthRef.current) return;
+    inFlightHealthRef.current = true;
+    setHealthRefreshing(true);
+    try {
+      if (typeof api.getHealth === 'function') {
+        const data = await api.getHealth(testInference);
+        setHealth(data);
+        setLastCheckedTime(new Date().toLocaleTimeString());
+      }
+    } catch (error) {
+      setHealth({
+        status: 'SERVICE_UNAVAILABLE',
+        timestamp: Date.now(),
+        checks: {
+          frontend: { status: 'UP', message: 'UI is loaded and operational' },
+          backend: { status: 'DOWN', message: error instanceof Error ? error.message : 'Backend API is unreachable' },
+          database: { status: 'UNKNOWN', message: 'Cannot verify: backend is unreachable' },
+          ollama: { status: 'UNKNOWN', message: 'Cannot verify: backend is unreachable' },
+          chatModel: { status: 'UNKNOWN', message: 'Cannot verify: backend is unreachable' },
+          embeddingModel: { status: 'UNKNOWN', message: 'Cannot verify: backend is unreachable' },
+          indexing: { status: 'UNKNOWN', message: 'Cannot verify: backend is unreachable' },
+        },
+      });
+      setLastCheckedTime(new Date().toLocaleTimeString());
+    } finally {
+      inFlightHealthRef.current = false;
+      setHealthRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void pollHealth();
+    const interval = window.setInterval(() => {
+      void pollHealth();
+    }, 20_000);
+    return () => window.clearInterval(interval);
+  }, [pollHealth]);
 
   const refreshRepositories = useCallback(async () => {
     setLoadingRepositories(true);
@@ -32,12 +79,10 @@ export default function App() {
     try {
       const items = await api.listRepositories();
       setRepositories(items);
-      setApiConnected(true);
       setSelectedRepositoryId((current) => current && items.some((item) => item.id === current)
         ? current
         : items[0]?.id ?? null);
     } catch (error) {
-      setApiConnected(false);
       setRepositoryError(error instanceof Error ? error.message : 'Could not load repositories.');
     } finally {
       setLoadingRepositories(false);
@@ -83,7 +128,6 @@ export default function App() {
   function completeImport(item: Repository) {
     upsertRepository(item);
     setImportOpen(false);
-    setApiConnected(true);
     setView('repositories');
     setNotice(`Import response status: ${item.indexingStatus ?? 'not reported'}.`);
   }
@@ -92,6 +136,22 @@ export default function App() {
     upsertRepository(item);
     setView('repositories');
   }
+
+  const overallStatus: OverallHealthStatus = health ? health.status : 'CHECKING';
+  const overallLabel = overallStatus === 'OPERATIONAL'
+    ? 'All Systems Operational'
+    : overallStatus === 'DEGRADED'
+      ? 'Degraded'
+      : overallStatus === 'SERVICE_UNAVAILABLE'
+        ? 'Service Unavailable'
+        : 'Checking…';
+  const overallTone = overallStatus === 'OPERATIONAL'
+    ? 'tone-up'
+    : overallStatus === 'DEGRADED'
+      ? 'tone-warn'
+      : overallStatus === 'SERVICE_UNAVAILABLE'
+        ? 'tone-danger'
+        : 'tone-muted';
 
   return (
     <div className="app-shell">
@@ -121,10 +181,17 @@ export default function App() {
           </a>
         </div>
         <div className="topbar-meta">
-          <span className="api-indicator" role="status">
-            <span className={`api-mark ${apiConnected === true ? 'is-up' : apiConnected === false ? 'is-down' : ''}`} aria-hidden="true" />
-            <span className="api-text">{apiConnected === true ? 'API connected' : apiConnected === false ? 'API unavailable' : 'Connecting…'}</span>
-          </span>
+          <button
+            type="button"
+            className="live-health-trigger"
+            onClick={() => setHealthModalOpen(true)}
+            title="Open Live System Health Monitor"
+            aria-label={`Live System Health: ${overallLabel}. Click to open details.`}
+          >
+            <span className={`status-dot ${overallTone}`} aria-hidden="true" />
+            <span className="health-label">{overallLabel}</span>
+            {lastCheckedTime && <span className="health-time" aria-hidden="true">({lastCheckedTime})</span>}
+          </button>
           <span className="topbar-divider" aria-hidden="true" />
           <a className="guide-link" href="https://getdesign.md/opencode.ai/design-md" target="_blank" rel="noreferrer">
             <span>guide</span>
@@ -164,6 +231,18 @@ export default function App() {
         <SourceInspector repository={selectedRepository} source={source} />
       </div>
       {importOpen && <RepositoryImportDialog onClose={() => setImportOpen(false)} onImported={completeImport} onFailedRepository={failedImport} />}
+      {healthModalOpen && (
+        <HealthMonitorModal
+          health={health}
+          overallStatus={overallStatus}
+          lastCheckedTime={lastCheckedTime}
+          refreshing={healthRefreshing}
+          onRefresh={() => pollHealth(false)}
+          onTestInference={() => pollHealth(true)}
+          testingInference={testingInference}
+          onClose={() => setHealthModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

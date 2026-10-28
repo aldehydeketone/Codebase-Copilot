@@ -5,6 +5,7 @@ import type {
   RepositoryImportRequest,
   SearchRequest,
   SearchResult,
+  SystemHealthResponse,
 } from '../types';
 
 const apiPrefix = import.meta.env.DEV ? '/api' : `${(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')}/api`;
@@ -159,6 +160,10 @@ export const api = {
     } finally {
       clearTimeout(timeout);
     }
+  },
+
+  async getHealth(testInference = false): Promise<SystemHealthResponse> {
+    return await request<SystemHealthResponse>(`/health${testInference ? '?testInference=true' : ''}`);
   },
 };
 
