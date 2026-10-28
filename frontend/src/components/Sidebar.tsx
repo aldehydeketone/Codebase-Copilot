@@ -81,7 +81,28 @@ export function Sidebar({
 
 export function RepositoryStatus({ status }: { status: string | null }) {
   const value = status || 'UNKNOWN';
-  const tone = value === 'COMPLETED' ? 'status-done' : value === 'COMPLETED_EMPTY' ? 'status-empty' : value === 'FAILED' ? 'status-failed' : value === 'INDEXING' ? 'status-running' : 'status-pending';
-  const label = value === 'COMPLETED_EMPTY' ? 'no Java code' : value.toLowerCase();
+  if (value === 'INDEXING') {
+    return (
+      <span className="status-badge status-running">
+        <span className="badge-pulse-dot" aria-hidden="true" />
+        INDEXING
+      </span>
+    );
+  }
+  const tone = value === 'COMPLETED'
+    ? 'status-done'
+    : value === 'COMPLETED_EMPTY'
+      ? 'status-empty'
+      : value === 'FAILED'
+        ? 'status-failed'
+        : 'status-pending';
+  // Note: 'no Java code' is required by integration tests
+  const label = value === 'COMPLETED'
+    ? 'COMPLETED'
+    : value === 'COMPLETED_EMPTY'
+      ? 'no Java code'
+      : value === 'FAILED'
+        ? 'FAILED'
+        : value;
   return <span className={`status-badge ${tone}`}>{label}</span>;
 }

@@ -98,7 +98,8 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-brand">
           <span className="brand-mark">[ cc ]</span>
-          <span>codebase copilot</span>
+          <span className="brand-title">codebase copilot</span>
+          <span className="topbar-divider" aria-hidden="true" />
           <a
             className="repo-badge"
             href="https://github.com/aldehydeketone/Codebase-Copilot"
@@ -109,8 +110,8 @@ export default function App() {
             <svg
               className="repo-badge-icon"
               viewBox="0 0 16 16"
-              width="15"
-              height="15"
+              width="14"
+              height="14"
               fill="currentColor"
               aria-hidden="true"
             >
@@ -120,8 +121,19 @@ export default function App() {
           </a>
         </div>
         <div className="topbar-meta">
-          <span className="api-indicator" role="status"><span className={`api-mark ${apiConnected === true ? 'is-up' : apiConnected === false ? 'is-down' : ''}`} aria-hidden="true" />{apiConnected === true ? 'API connected' : apiConnected === false ? 'API unavailable' : 'Connecting…'}</span>
-          <a className="guide-link" href="https://getdesign.md/opencode.ai/design-md" target="_blank" rel="noreferrer">guide [↗]</a>
+          <span className="api-indicator" role="status">
+            <span className={`api-mark ${apiConnected === true ? 'is-up' : apiConnected === false ? 'is-down' : ''}`} aria-hidden="true" />
+            <span className="api-text">{apiConnected === true ? 'API connected' : apiConnected === false ? 'API unavailable' : 'Connecting…'}</span>
+          </span>
+          <span className="topbar-divider" aria-hidden="true" />
+          <a className="guide-link" href="https://getdesign.md/opencode.ai/design-md" target="_blank" rel="noreferrer">
+            <span>guide</span>
+            <svg className="external-link-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />
+              <path d="M10 2h4v4" />
+              <path d="M6 10L14 2" />
+            </svg>
+          </a>
         </div>
       </header>
       <div className="app-grid">

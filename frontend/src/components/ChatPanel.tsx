@@ -14,6 +14,38 @@ interface Message {
   error?: string;
 }
 
+function CodeBlock({ language, children }: { language: string; children: string }) {
+  const [copied, setCopied] = useState(false);
+  const lines = children.split('\n');
+
+  function copy() {
+    void navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="terminal-code-block">
+      <div className="code-block-header">
+        <span className="code-lang">{language || 'code'}</span>
+        <button type="button" className="copy-code-btn" onClick={copy}>
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre className="code-block-pre">
+        <code>
+          {lines.map((line, idx) => (
+            <span className="code-line" key={idx}>
+              <span className="line-number" aria-hidden="true">{idx + 1}</span>
+              <span className="line-content">{line || ' '}</span>
+            </span>
+          ))}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
 export function ChatPanel({ repository, onInspect }: ChatPanelProps) {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,45 +91,105 @@ export function ChatPanel({ repository, onInspect }: ChatPanelProps) {
 
   return (
     <section className="workspace-view chat-view" aria-labelledby="chat-view-title">
-      <div className="view-heading"><div><h1 id="chat-view-title">Ask the codebase</h1><p>{repository ? `Answers use indexed context from ${repository.name}.` : 'Select a completed repository to start a grounded conversation.'}</p></div><span className="heading-marker" aria-hidden="true">[&gt;]</span></div>
+      <div className="view-heading">
+        <div>
+          <h1 id="chat-view-title">Ask the codebase</h1>
+          <p>{repository ? `Grounded code intelligence via ${repository.name}` : 'Select a repository to query with natural language.'}</p>
+        </div>
+        <span className="heading-marker" aria-hidden="true">[&gt;]</span>
+      </div>
       {!repository ? <EmptyWorkspace title="No repository selected" description="Import a local Java repository, then choose it in the left sidebar." /> : (
         <>
           {messages.length === 0 ? (
-            <div className="chat-empty"><span aria-hidden="true">[ cc ]</span><h2>Ask about your code</h2><p>Questions are sent with this repository ID. Answers can include citations to returned code chunks.</p></div>
+            <div className="chat-empty">
+              <span aria-hidden="true">[ cc ]</span>
+              <h2>Ask about your code</h2>
+              <p>Queries retrieve indexed vector embeddings from this repository. Responses cite ground-truth Java source files.</p>
+            </div>
           ) : (
             <div className="message-list" aria-live="polite">
               {messages.map((message) => (
                 <article key={message.id} className="message-pair">
-                  <div className="question-message"><span className="message-label">You</span><p>{message.question}</p></div>
+                  <div className="question-message">
+                    <span className="message-label">You</span>
+                    <p>{message.question}</p>
+                  </div>
                   {message.response ? (
                     message.response.noConfidentContext ? (
-                      <div className="no-context-response" role="status"><strong>No confident code matches</strong><p>{message.response.answer}</p></div>
-                    ) : <div className="assistant-message">
-                      <div className="message-label">Copilot</div>
-                      <div className="markdown-answer"><ReactMarkdown>{message.response.answer}</ReactMarkdown></div>
-                      {message.response.citations.length > 0 && (
-                        <div className="citation-list" aria-label="Answer sources">
-                          <h3>Sources</h3>
-                          {message.response.citations.map((citation) => (
-                            <button className="citation-link" type="button" key={`${message.id}-${citation.id}`} onClick={() => onInspect({
-                              filePath: citation.filePath,
-                              startLine: citation.startLine,
-                              endLine: citation.endLine,
-                              content: citation.snippet,
-                              citationId: citation.id,
-                            })}>
-                              <span>[{citation.id}]</span><code>{citation.filePath}</code><span>lines {citation.startLine}–{citation.endLine}</span>
-                            </button>
-                          ))}
+                      <div className="no-context-response" role="status">
+                        <strong>No confident code matches</strong>
+                        <p>{message.response.answer}</p>
+                      </div>
+                    ) : (
+                      <div className="assistant-message">
+                        <div className="message-label">Copilot</div>
+                        <div className="markdown-answer">
+                          <ReactMarkdown
+                            components={{
+                              code(props) {
+                                const { children, className, ...rest } = props;
+                                const match = /language-(\w+)/.exec(className || '');
+                                const content = String(children);
+                                const isBlock = content.includes('\n') || Boolean(match);
+                                if (isBlock) {
+                                  return (
+                                    <CodeBlock language={match ? match[1] : ''}>
+                                      {content.replace(/\n$/, '')}
+                                    </CodeBlock>
+                                  );
+                                }
+                                return <code className="inline-code" {...rest}>{children}</code>;
+                              }
+                            }}
+                          >
+                            {message.response.answer}
+                          </ReactMarkdown>
                         </div>
-                      )}
-                    </div>
+                        {message.response.citations.length > 0 && (
+                          <div className="citation-list" aria-label="Answer sources">
+                            <h3>Sources</h3>
+                            <div className="citation-chips-container">
+                              {message.response.citations.map((citation) => (
+                                <button
+                                  className="citation-chip"
+                                  type="button"
+                                  key={`${message.id}-${citation.id}`}
+                                  onClick={() => onInspect({
+                                    filePath: citation.filePath,
+                                    startLine: citation.startLine,
+                                    endLine: citation.endLine,
+                                    content: citation.snippet,
+                                    citationId: citation.id,
+                                  })}
+                                >
+                                  <span className="chip-bracket">[{citation.id}]</span>
+                                  <code className="chip-path">{citation.filePath}</code>
+                                  <span className="chip-lines">:{citation.startLine}–{citation.endLine}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
                   ) : message.error ? (
-                    <div className="inline-error" role="alert"><span>{message.error}</span><button type="button" className="quiet-link" disabled={submitting} onClick={() => void send(message.question, message.id)}>Retry</button></div>
-                  ) : <div className="chat-progress" role="status" aria-live="polite">
-                    <p className="loading-line">Searching code and generating a response… {elapsedSeconds}s</p>
-                    {elapsedSeconds >= 8 && <p className="muted-copy">One request is already in progress. A cold local model load can take several minutes; keep waiting instead of resending.</p>}
-                  </div>}
+                    <div className="inline-error" role="alert">
+                      <span>{message.error}</span>
+                      <button type="button" className="quiet-link" disabled={submitting} onClick={() => void send(message.question, message.id)}>Retry</button>
+                    </div>
+                  ) : (
+                    <div className="chat-progress" role="status" aria-live="polite">
+                      <div className="thinking-row">
+                        <span className="thinking-dots" aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                        </span>
+                        <span className="thinking-label">Thinking… searching code and preparing answer ({elapsedSeconds}s)</span>
+                      </div>
+                      {elapsedSeconds >= 8 && <p className="muted-copy">Cold local model load in progress; query is active…</p>}
+                    </div>
+                  )}
                 </article>
               ))}
             </div>
