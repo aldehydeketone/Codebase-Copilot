@@ -28,6 +28,7 @@ public class RepositoryIndexer {
     private final RepositoryRepository repositoryRepository;
     private final FileRepository fileRepository;
     private final JavaFileDiscovery fileDiscovery;
+    private final RepositoryStructureDiscovery structureDiscovery;
     private final JavaSourceParser sourceParser;
     private final EmbeddingService embeddingService;
     private final JdbcTemplate jdbcTemplate;
@@ -36,6 +37,12 @@ public class RepositoryIndexer {
     public IndexingSummary index(UUID repositoryId, Path root) throws IOException {
         Repository repository = repositoryRepository.findById(repositoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Repository no longer exists"));
+
+        // Build structure manifest
+        RepositoryStructureDiscovery.StructureSummary structure = structureDiscovery.discoverStructure(root);
+        repository.setStructureManifest(structure.manifestText());
+        final Repository persistedRepository = repositoryRepository.saveAndFlush(repository);
+
         List<Path> javaFiles = fileDiscovery.discover(root);
         Set<String> discoveredPaths = new HashSet<>();
         int indexedChunkCount = 0;
@@ -47,7 +54,7 @@ public class RepositoryIndexer {
             String contentHash = sha256(source);
             File file = fileRepository.findByRepositoryIdAndRelativePath(repositoryId, relativePath)
                     .orElseGet(() -> File.builder()
-                            .repository(repository)
+                            .repository(persistedRepository)
                             .relativePath(relativePath)
                             .language("JAVA")
                             .build());

@@ -28,6 +28,9 @@ public class Repository {
     @Column(name = "error_details")
     private String errorDetails;
 
+    @Column(name = "structure_manifest", columnDefinition = "TEXT")
+    private String structureManifest;
+
     @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();

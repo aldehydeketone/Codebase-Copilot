@@ -30,17 +30,29 @@ class RagChatServiceTest {
     private ChatModel chatModel;
     private SemanticSearchService searchService;
     private RepositoryRepository repositoryRepository;
+    private com.copilot.service.ingestion.RepositoryStructureDiscovery structureDiscovery;
     private RagChatService ragChatService;
 
     private final UUID repoId = UUID.randomUUID();
+    private com.copilot.model.Repository testRepo;
 
     @BeforeEach
     void setUp() {
         chatModel = mock(ChatModel.class);
         searchService = mock(SemanticSearchService.class);
         repositoryRepository = mock(RepositoryRepository.class);
-        ragChatService = new RagChatService(chatModel, searchService, repositoryRepository);
+        structureDiscovery = mock(com.copilot.service.ingestion.RepositoryStructureDiscovery.class);
+        ragChatService = new RagChatService(chatModel, searchService, repositoryRepository, structureDiscovery);
 
+        testRepo = com.copilot.model.Repository.builder()
+                .id(repoId)
+                .name("test-repo")
+                .sourceType("LOCAL")
+                .sourcePath("/path/to/test-repo")
+                .structureManifest("=== REPOSITORY STRUCTURE MANIFEST ===\nTop-Level Directories: src, frontend\nImportant Root Files: pom.xml, README.md\nTotal Directories: 5, Total Files: 12\n")
+                .build();
+
+        when(repositoryRepository.findById(repoId)).thenReturn(java.util.Optional.of(testRepo));
         when(repositoryRepository.existsById(repoId)).thenReturn(true);
     }
 
@@ -55,7 +67,7 @@ class RagChatServiceTest {
     @Test
     void throwsExceptionIfRepositoryNotFound() {
         UUID unknownId = UUID.randomUUID();
-        when(repositoryRepository.existsById(unknownId)).thenReturn(false);
+        when(repositoryRepository.findById(unknownId)).thenReturn(java.util.Optional.empty());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
                 ragChatService.chat(new ChatRequest(unknownId, "What does this code do?", 5)));
@@ -64,6 +76,8 @@ class RagChatServiceTest {
 
     @Test
     void returnsDirectResponseWhenNoChunksRetrieved() {
+        testRepo.setStructureManifest(null);
+        testRepo.setSourcePath(null);
         when(searchService.search("unknown query", repoId, 5)).thenReturn(Collections.emptyList());
 
         ChatResponse response = ragChatService.chat(new ChatRequest(repoId, "unknown query", 5));
@@ -166,6 +180,53 @@ class RagChatServiceTest {
         ChatResponse response = ragChatService.chat(new ChatRequest(repoId, "test", 5));
 
         assertTrue(response.getCitations().isEmpty());
+    }
+
+    @Test
+    void answersStructureQuestionUsingManifestEvenWithoutChunks() {
+        when(searchService.search("List the top-level directories and important files in this repository", repoId, 5))
+                .thenReturn(Collections.emptyList());
+
+        org.springframework.ai.chat.model.ChatResponse mockModelResponse =
+                new org.springframework.ai.chat.model.ChatResponse(List.of(
+                        new Generation(new AssistantMessage("Top-level directories are `src` and `frontend`. Key root files are `pom.xml` and `README.md`."))
+                ));
+        when(chatModel.call(any(Prompt.class))).thenReturn(mockModelResponse);
+
+        ChatResponse response = ragChatService.chat(new ChatRequest(repoId, "List the top-level directories and important files in this repository", 5));
+
+        assertNotNull(response);
+        assertFalse(response.isNoConfidentContext());
+        assertTrue(response.getAnswer().contains("Top-level directories"));
+
+        ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+        verify(chatModel).call(promptCaptor.capture());
+        Prompt prompt = promptCaptor.getValue();
+        String userContent = prompt.getInstructions().stream()
+                .filter(m -> m.getMessageType() == MessageType.USER)
+                .findFirst().orElseThrow().getText();
+
+        assertTrue(userContent.contains("<repository_structure>"));
+        assertTrue(userContent.contains("Top-Level Directories: src, frontend"));
+        assertTrue(userContent.contains("Important Root Files: pom.xml, README.md"));
+    }
+
+    @Test
+    void isStructureQuestionDetectsStructureQueries() {
+        assertTrue(ragChatService.isStructureQuestion("List the top-level directories and important files"));
+        assertTrue(ragChatService.isStructureQuestion("What is the project folder structure?"));
+        assertTrue(ragChatService.isStructureQuestion("Show me the directory tree"));
+        assertTrue(ragChatService.isStructureQuestion("Where is pom.xml?"));
+        assertTrue(ragChatService.isStructureQuestion("Does this repository have a Dockerfile?"));
+        assertTrue(ragChatService.isStructureQuestion("What root files are in this project?"));
+    }
+
+    @Test
+    void isStructureQuestionRejectsCodeQueries() {
+        assertFalse(ragChatService.isStructureQuestion("How does the chat service work?"));
+        assertFalse(ragChatService.isStructureQuestion("Explain the embedding pipeline"));
+        assertFalse(ragChatService.isStructureQuestion("What does the search method return?"));
+        assertFalse(ragChatService.isStructureQuestion(null));
     }
 
     @Test
