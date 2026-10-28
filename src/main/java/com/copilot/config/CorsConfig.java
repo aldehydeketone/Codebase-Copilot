@@ -18,15 +18,25 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        List<String> origins = new ArrayList<>(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        // Base patterns: localhost variants + any Cloudflare Quick Tunnel subdomain.
+        // allowedOriginPatterns() supports wildcard segments and is compatible with
+        // allowCredentials(true), unlike allowedOrigins("*").
+        List<String> patterns = new ArrayList<>(List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://*.trycloudflare.com"  // ephemeral Quick Tunnel URLs
+        ));
+
+        // Also accept any extra patterns supplied via CORS_ALLOWED_ORIGINS env var.
         if (extraOrigins != null && !extraOrigins.isBlank()) {
             Arrays.stream(extraOrigins.split(","))
                   .map(String::trim)
                   .filter(s -> !s.isEmpty())
-                  .forEach(origins::add);
+                  .forEach(patterns::add);
         }
+
         registry.addMapping("/api/**")
-                .allowedOrigins(origins.toArray(String[]::new))
+                .allowedOriginPatterns(patterns.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*");
     }
