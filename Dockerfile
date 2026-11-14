@@ -38,5 +38,5 @@ EXPOSE 8080
 # JVM flags tuned for a small container:
 #   -XX:+UseContainerSupport  – respect cgroup memory limits
 #   -XX:MaxRAMPercentage=75   – leave headroom for the OS
-ENTRYPOINT ["sh", "-c", "java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Dspring.datasource.url=jdbc:postgresql://${COPILOT_DB_HOST}:${COPILOT_DB_PORT}/${COPILOT_DB_NAME}?sslmode=require -Dspring.datasource.username=${COPILOT_DB_USER} -Dspring.datasource.password=${COPILOT_DB_PASSWORD} -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Dspring.datasource.url=jdbc:postgresql://${COPILOT_DB_HOST}:${COPILOT_DB_PORT}/${COPILOT_DB_NAME}?sslmode=require -Dspring.datasource.username=${COPILOT_DB_USER} -Dspring.datasource.password=${COPILOT_DB_PASSWORD} -Dspring.ai.ollama.base-url=${OLLAMA_BASE_URL} -jar app.jar"]
 
