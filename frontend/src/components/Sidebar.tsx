@@ -1,3 +1,14 @@
+import { useState } from 'react';
+import {
+  MessageSquare,
+  Search,
+  FolderGit2,
+  Plus,
+  RefreshCw,
+  ChevronDown,
+  Layers,
+  FileCode,
+} from 'lucide-react';
 import type { Repository, WorkspaceView } from '../types';
 
 interface SidebarProps {
@@ -11,11 +22,39 @@ interface SidebarProps {
   onRefresh: () => void;
 }
 
-const navigation: { id: WorkspaceView; label: string; marker: string }[] = [
-  { id: 'chat', label: 'Chat', marker: '[>]' },
-  { id: 'search', label: 'Search', marker: '[?]' },
-  { id: 'repositories', label: 'Repositories', marker: '[=]' },
-];
+export function RepositoryStatus({ status }: { status: string | null }) {
+  const value = status || 'UNKNOWN';
+
+  if (value === 'INDEXING') {
+    return (
+      <span className="status-badge indexing">
+        <span className="badge-pulse" aria-hidden="true" />
+        INDEXING
+      </span>
+    );
+  }
+
+  const toneClass =
+    value === 'COMPLETED'
+      ? 'completed'
+      : value === 'COMPLETED_EMPTY'
+        ? 'empty'
+        : value === 'FAILED'
+          ? 'failed'
+          : 'pending';
+
+  // Integration test relies on 'no Java code' label
+  const label =
+    value === 'COMPLETED'
+      ? 'COMPLETED'
+      : value === 'COMPLETED_EMPTY'
+        ? 'no Java code'
+        : value === 'FAILED'
+          ? 'FAILED'
+          : value;
+
+  return <span className={`status-badge ${toneClass}`}>{label}</span>;
+}
 
 export function Sidebar({
   repositories,
@@ -27,82 +66,165 @@ export function Sidebar({
   onImport,
   onRefresh,
 }: SidebarProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const selectedRepo = repositories.find((r) => r.id === selectedRepositoryId);
+
+  const navItems = [
+    { id: 'chat' as WorkspaceView, label: 'Chat', icon: MessageSquare, shortcut: '1' },
+    { id: 'search' as WorkspaceView, label: 'Search', icon: Search, shortcut: '2' },
+    { id: 'repositories' as WorkspaceView, label: 'Repositories', icon: FolderGit2, shortcut: '3' },
+  ];
+
   return (
     <aside className="sidebar" aria-label="Main navigation">
-      <div className="sidebar-brand"><span className="brand-mark">[ cc ]</span><span>codebase copilot</span></div>
+      {/* Top Repo Switcher */}
+      <div className="sidebar-repo-selector">
+        <button
+          type="button"
+          className="repo-select-btn"
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          aria-expanded={dropdownOpen}
+          aria-haspopup="listbox"
+          aria-label="Active repository selector"
+          title="Switch Active Repository"
+        >
+          <FolderGit2 size={14} className="text-accent" />
+          {selectedRepo ? (
+            <span className="repo-select-name">{selectedRepo.name}</span>
+          ) : (
+            <span className="repo-select-placeholder">Select repository...</span>
+          )}
+          <ChevronDown size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+        </button>
 
-      <nav className="primary-nav" aria-label="Workspace views">
-        {navigation.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item ${activeView === item.id ? 'is-active' : ''}`}
-            aria-current={activeView === item.id ? 'page' : undefined}
-            onClick={() => onNavigate(item.id)}
-          >
-            <span aria-hidden="true">{item.marker}</span>{item.label}
-          </button>
-        ))}
+        {dropdownOpen && (
+          <div className="repo-dropdown" role="listbox">
+            {repositories.map((repo) => (
+              <button
+                key={repo.id}
+                type="button"
+                className={`repo-dropdown-item ${repo.id === selectedRepositoryId ? 'active' : ''}`}
+                onClick={() => {
+                  onSelectRepository(repo);
+                  setDropdownOpen(false);
+                }}
+              >
+                <FolderGit2 size={13} />
+                <span className="truncate" style={{ flex: 1 }}>{repo.name}</span>
+                <span className="repo-dropdown-item-status">{repo.indexedFileCount}f</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className="repo-dropdown-import"
+              onClick={() => {
+                setDropdownOpen(false);
+                onImport();
+              }}
+            >
+              <Plus size={13} />
+              <span>Import repository</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Primary Navigation Tabs */}
+      <nav className="sidebar-nav" aria-label="Workspace views">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={() => onNavigate(item.id)}
+            >
+              <Icon size={14} className="nav-icon" />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              <kbd className="kbd" style={{ opacity: 0.6, fontSize: 9 }}>{item.shortcut}</kbd>
+            </button>
+          );
+        })}
       </nav>
 
-      <section className="repository-rail" aria-labelledby="repository-list-title">
-        <div className="rail-title-row">
-          <h2 id="repository-list-title">Repositories</h2>
-          <span className="count-badge" aria-label={`${repositories.length} repositories`}>{repositories.length}</span>
-        </div>
-        <button type="button" className="import-trigger" onClick={onImport}>[+] Import repository</button>
+      {/* Repository Section */}
+      <div className="sidebar-section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 12 }}>
+        <span>Repositories</span>
+        <span style={{ fontSize: 10, background: 'var(--bg-active)', padding: '1px 6px', borderRadius: 999 }}>
+          {repositories.length}
+        </span>
+      </div>
+
+      <div style={{ padding: '0 8px 6px' }}>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          style={{ width: '100%', justifyContent: 'center', gap: 6 }}
+          onClick={onImport}
+        >
+          <Plus size={12} />
+          <span>[+] Import repository</span>
+        </button>
+      </div>
+
+      <div className="sidebar-repo-list">
         {loading ? (
-          <p className="rail-hint" role="status">Loading repositories…</p>
+          <p style={{ padding: '12px 8px', fontSize: 11, color: 'var(--text-muted)' }} role="status">
+            Loading repositories…
+          </p>
         ) : repositories.length === 0 ? (
-          <p className="rail-hint">No repositories imported.</p>
+          <p style={{ padding: '12px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
+            No repositories imported.
+          </p>
         ) : (
-          <ul className="repository-list">
-            {repositories.map((repository) => (
-              <li key={repository.id}>
-                <button
-                  type="button"
-                  className={`repository-item ${repository.id === selectedRepositoryId ? 'is-selected' : ''}`}
-                  aria-current={repository.id === selectedRepositoryId ? 'true' : undefined}
-                  onClick={() => onSelectRepository(repository)}
-                >
-                  <span className="repository-name">{repository.name}</span>
-                  <RepositoryStatus status={repository.indexingStatus} />
-                </button>
-              </li>
-            ))}
-          </ul>
+          repositories.map((repo) => {
+            const isSelected = repo.id === selectedRepositoryId;
+            return (
+              <button
+                key={repo.id}
+                type="button"
+                className={`sidebar-repo-item ${isSelected ? 'selected' : ''}`}
+                aria-current={isSelected ? 'true' : undefined}
+                onClick={() => onSelectRepository(repo)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span className="sidebar-repo-item-name">{repo.name}</span>
+                  <RepositoryStatus status={repo.indexingStatus} />
+                </div>
+                <div className="sidebar-repo-item-meta">
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <FileCode size={10} />
+                    {repo.indexedFileCount}
+                  </span>
+                  <span>·</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <Layers size={10} />
+                    {repo.indexedChunkCount}
+                  </span>
+                </div>
+              </button>
+            );
+          })
         )}
-        <button type="button" className="quiet-link" onClick={onRefresh} disabled={loading}>Refresh list</button>
-      </section>
-      <div className="sidebar-footer"><span className="state-mark" aria-hidden="true">[·]</span> Local workspace</div>
+      </div>
+
+      {/* Footer */}
+      <div className="sidebar-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onRefresh}
+          disabled={loading}
+          style={{ fontSize: 11, padding: '4px 6px' }}
+        >
+          <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+          <span>Refresh list</span>
+        </button>
+        <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>v1.0.0</span>
+      </div>
     </aside>
   );
-}
-
-export function RepositoryStatus({ status }: { status: string | null }) {
-  const value = status || 'UNKNOWN';
-  if (value === 'INDEXING') {
-    return (
-      <span className="status-badge status-running">
-        <span className="badge-pulse-dot" aria-hidden="true" />
-        INDEXING
-      </span>
-    );
-  }
-  const tone = value === 'COMPLETED'
-    ? 'status-done'
-    : value === 'COMPLETED_EMPTY'
-      ? 'status-empty'
-      : value === 'FAILED'
-        ? 'status-failed'
-        : 'status-pending';
-  // Note: 'no Java code' is required by integration tests
-  const label = value === 'COMPLETED'
-    ? 'COMPLETED'
-    : value === 'COMPLETED_EMPTY'
-      ? 'no Java code'
-      : value === 'FAILED'
-        ? 'FAILED'
-        : value;
-  return <span className={`status-badge ${tone}`}>{label}</span>;
 }

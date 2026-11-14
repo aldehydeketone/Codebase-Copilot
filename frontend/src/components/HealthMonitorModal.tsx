@@ -1,4 +1,18 @@
 import { useState } from 'react';
+import {
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  HelpCircle,
+  RefreshCw,
+  Cpu,
+  Database,
+  Layers,
+  Terminal,
+  X,
+  Play,
+} from 'lucide-react';
 import type { ComponentHealth, OverallHealthStatus, SystemHealthResponse } from '../types';
 
 interface HealthMonitorModalProps {
@@ -26,39 +40,54 @@ export function HealthMonitorModal({
 
   const checks = health?.checks ?? {};
 
-  const getStatusTone = (status?: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status?.toUpperCase()) {
       case 'UP':
       case 'OPERATIONAL':
       case 'IDLE':
       case 'COMPLETED':
-        return 'tone-up';
+        return <CheckCircle2 size={16} className="health-status-icon up" />;
       case 'DEGRADED':
       case 'MISSING':
       case 'RUNNING':
-        return 'tone-warn';
+        return <AlertTriangle size={16} className="health-status-icon degraded" />;
       case 'DOWN':
       case 'SERVICE_UNAVAILABLE':
       case 'TIMEOUT':
       case 'FAILED':
-        return 'tone-danger';
+        return <XCircle size={16} className="health-status-icon down" />;
       default:
-        return 'tone-muted';
+        return <HelpCircle size={16} className="health-status-icon unknown" />;
     }
   };
 
   const getOverallHeadline = () => {
     switch (overallStatus) {
       case 'OPERATIONAL':
-        return { label: 'All Systems Operational', desc: 'Backend, PostgreSQL, Ollama, and configured AI models are responding normally.' };
+        return {
+          label: 'All Systems Operational',
+          desc: 'Backend REST API, PostgreSQL (pgvector), Ollama, and configured AI models are responding normally.',
+        };
       case 'DEGRADED':
-        return { label: 'Degraded Performance / AI Unavailable', desc: 'The workbench is running, but one or more AI models or background services need attention.' };
+        return {
+          label: 'Degraded',
+          desc: 'The workbench is running, but one or more AI models or background services need attention.',
+        };
       case 'SERVICE_UNAVAILABLE':
-        return { label: 'Service Unavailable', desc: 'Critical dependency failure (PostgreSQL or Backend API). Requests may fail.' };
+        return {
+          label: 'Service Unavailable',
+          desc: 'Critical dependency failure (PostgreSQL or Backend API). Requests will fail until restored.',
+        };
       case 'CHECKING':
-        return { label: 'Checking Health…', desc: 'Querying dependency endpoints…' };
+        return {
+          label: 'Checking Health…',
+          desc: 'Querying dependency endpoints…',
+        };
       default:
-        return { label: 'Status Unknown', desc: 'Could not obtain valid telemetry from the backend health probe.' };
+        return {
+          label: 'Status Unknown',
+          desc: 'Could not obtain valid telemetry from the backend health probe.',
+        };
     }
   };
 
@@ -66,137 +95,211 @@ export function HealthMonitorModal({
 
   return (
     <div
-      className="dialog-backdrop"
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="modal-backdrop"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <section
-        className="health-modal"
+        className="modal-box"
         role="dialog"
         aria-modal="true"
         aria-labelledby="health-modal-title"
+        style={{ width: 560 }}
       >
-        <div className="health-modal-header">
-          <div className="header-title-col">
-            <div className="title-row">
-              <span className={`status-dot ${getStatusTone(overallStatus)}`} aria-hidden="true" />
-              <h2 id="health-modal-title">Live System Health Monitor</h2>
-            </div>
-            <p className="health-meta-subtitle">
-              Last probe: {lastCheckedTime || 'Pending'} · Polls automatically every 20s
-            </p>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={16} className="text-accent" />
+            <h2 id="health-modal-title" className="modal-title">
+              Live System Health Monitor
+            </h2>
           </div>
           <button
             type="button"
-            className="dialog-close"
+            className="drawer-close"
             onClick={onClose}
             aria-label="Close health dialog"
           >
-            [x]
+            <X size={15} />
           </button>
         </div>
 
         {/* Overall Status Banner */}
-        <div className={`health-banner ${getStatusTone(overallStatus)}`}>
-          <div className="banner-status-title">{headline.label}</div>
-          <div className="banner-status-desc">{headline.desc}</div>
+        <div
+          style={{
+            padding: '12px 20px',
+            background:
+              overallStatus === 'OPERATIONAL'
+                ? 'rgba(16, 185, 129, 0.08)'
+                : overallStatus === 'DEGRADED'
+                  ? 'rgba(234, 179, 8, 0.08)'
+                  : 'rgba(239, 68, 68, 0.08)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color:
+                  overallStatus === 'OPERATIONAL'
+                    ? 'var(--status-green)'
+                    : overallStatus === 'DEGRADED'
+                      ? 'var(--status-yellow)'
+                      : 'var(--status-red)',
+              }}
+            >
+              {headline.label}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              {headline.desc}
+            </div>
+          </div>
+          <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>
+            {lastCheckedTime || 'Pending'}
+          </span>
         </div>
 
-        <div className="health-tabs">
+        {/* Tab buttons */}
+        <div style={{ display: 'flex', padding: '0 20px', borderBottom: '1px solid var(--border)' }}>
           <button
             type="button"
-            className={`tab-btn ${activeTab === 'overview' ? 'is-active' : ''}`}
+            className="btn btn-ghost"
+            style={{
+              borderRadius: 0,
+              borderBottom: activeTab === 'overview' ? '2px solid var(--accent)' : '2px solid transparent',
+              color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontSize: 12,
+              padding: '10px 12px',
+            }}
             onClick={() => setActiveTab('overview')}
           >
             Dependency Checks
           </button>
           <button
             type="button"
-            className={`tab-btn ${activeTab === 'raw' ? 'is-active' : ''}`}
+            className="btn btn-ghost"
+            style={{
+              borderRadius: 0,
+              borderBottom: activeTab === 'raw' ? '2px solid var(--accent)' : '2px solid transparent',
+              color: activeTab === 'raw' ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontSize: 12,
+              padding: '10px 12px',
+            }}
             onClick={() => setActiveTab('raw')}
           >
             Raw Telemetry
           </button>
         </div>
 
-        {activeTab === 'overview' ? (
-          <div className="health-grid">
-            <HealthCard
-              name="Frontend UI"
-              badge="UP"
-              tone="tone-up"
-              details="React 19 / Vite"
-              message="UI client active, routing and proxy responding"
-            />
-
-            <HealthCard
-              name="Backend API"
-              badge={checks.backend?.status ?? 'DOWN'}
-              tone={getStatusTone(checks.backend?.status)}
-              details={checks.backend?.latencyMs !== undefined ? `${checks.backend.latencyMs}ms` : undefined}
-              message={checks.backend?.message ?? 'Spring Boot REST service'}
-            />
-
-            <HealthCard
-              name="Database (PostgreSQL)"
-              badge={checks.database?.status ?? 'DOWN'}
-              tone={getStatusTone(checks.database?.status)}
-              details={checks.database?.latencyMs !== undefined ? `${checks.database.latencyMs}ms` : undefined}
-              message={checks.database?.message ?? 'pgvector persistence layer'}
-            />
-
-            <HealthCard
-              name="Ollama Service"
-              badge={checks.ollama?.status ?? 'DOWN'}
-              tone={getStatusTone(checks.ollama?.status)}
-              details={checks.ollama?.latencyMs !== undefined ? `${checks.ollama.latencyMs}ms` : undefined}
-              message={checks.ollama?.message ?? 'Local model engine on port 11434'}
-            />
-
-            <HealthCard
-              name="Chat Model"
-              badge={checks.chatModel?.status ?? 'MISSING'}
-              tone={getStatusTone(checks.chatModel?.status)}
-              details={checks.chatModel?.model ?? 'qwen3.5:4b'}
-              message={checks.chatModel?.message ?? 'Model availability check via Ollama tags'}
-            />
-
-            <HealthCard
-              name="Embedding Model"
-              badge={checks.embeddingModel?.status ?? 'MISSING'}
-              tone={getStatusTone(checks.embeddingModel?.status)}
-              details={checks.embeddingModel?.model ?? 'nomic-embed-text'}
-              message={checks.embeddingModel?.message ?? 'Embedding availability check via Ollama tags'}
-            />
-
-            <HealthCard
-              name="Repository Indexing"
-              badge={checks.indexing?.status ?? 'IDLE'}
-              tone={getStatusTone(checks.indexing?.status)}
-              details={checks.indexing?.totalRepositories !== undefined ? `${checks.indexing.totalRepositories} repos` : undefined}
-              message={checks.indexing?.message ?? 'Vector indexing queue and status'}
-            />
-
-            {health?.inferenceTest && (
-              <HealthCard
-                name="On-Demand Inference Test"
-                badge={health.inferenceTest.status}
-                tone={getStatusTone(health.inferenceTest.status)}
-                details={health.inferenceTest.latencyMs !== undefined ? `${health.inferenceTest.latencyMs}ms` : undefined}
-                message={health.inferenceTest.message}
+        <div className="modal-body" style={{ maxHeight: '55vh' }}>
+          {activeTab === 'overview' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <HealthItem
+                icon={<Activity size={14} />}
+                name="Frontend UI"
+                status="UP"
+                badge={checks.frontend?.status ?? 'UP'}
+                message="UI active, routing and proxy responding"
               />
-            )}
-          </div>
-        ) : (
-          <pre className="raw-json-view">
-            <code>{JSON.stringify(health, null, 2)}</code>
-          </pre>
-        )}
 
-        <div className="health-modal-actions">
+              <HealthItem
+                icon={<Terminal size={14} />}
+                name="Backend API"
+                status={checks.backend?.status ?? 'DOWN'}
+                badge={checks.backend?.status ?? 'DOWN'}
+                latency={checks.backend?.latencyMs}
+                message={checks.backend?.message ?? 'Spring Boot REST service'}
+              />
+
+              <HealthItem
+                icon={<Database size={14} />}
+                name="Database (PostgreSQL)"
+                status={checks.database?.status ?? 'DOWN'}
+                badge={checks.database?.status ?? 'DOWN'}
+                latency={checks.database?.latencyMs}
+                message={checks.database?.message ?? 'pgvector persistence layer'}
+              />
+
+              <HealthItem
+                icon={<Cpu size={14} />}
+                name="Ollama Service"
+                status={checks.ollama?.status ?? 'DOWN'}
+                badge={checks.ollama?.status ?? 'DOWN'}
+                latency={checks.ollama?.latencyMs}
+                message={checks.ollama?.message ?? 'Local model engine on port 11434'}
+              />
+
+              <HealthItem
+                icon={<Terminal size={14} />}
+                name="Chat Model"
+                status={checks.chatModel?.status ?? 'MISSING'}
+                badge={checks.chatModel?.status ?? 'MISSING'}
+                detail={checks.chatModel?.model ?? 'qwen3.5:4b'}
+                message={checks.chatModel?.message ?? 'Model availability check via Ollama tags'}
+              />
+
+              <HealthItem
+                icon={<Layers size={14} />}
+                name="Embedding Model"
+                status={checks.embeddingModel?.status ?? 'MISSING'}
+                badge={checks.embeddingModel?.status ?? 'MISSING'}
+                detail={checks.embeddingModel?.model ?? 'nomic-embed-text'}
+                message={checks.embeddingModel?.message ?? 'Embedding availability check via Ollama tags'}
+              />
+
+              <HealthItem
+                icon={<Layers size={14} />}
+                name="Repository Indexing"
+                status={checks.indexing?.status ?? 'IDLE'}
+                badge={checks.indexing?.status ?? 'IDLE'}
+                detail={
+                  checks.indexing?.totalRepositories !== undefined
+                    ? `${checks.indexing.totalRepositories} repos`
+                    : undefined
+                }
+                message={checks.indexing?.message ?? 'Vector indexing queue and status'}
+              />
+
+              {health?.inferenceTest && (
+                <HealthItem
+                  icon={<Play size={14} />}
+                  name="On-Demand Inference Test"
+                  status={health.inferenceTest.status}
+                  badge={health.inferenceTest.status}
+                  latency={health.inferenceTest.latencyMs}
+                  message={health.inferenceTest.message}
+                />
+              )}
+            </div>
+          ) : (
+            <pre
+              style={{
+                background: 'var(--code-bg)',
+                padding: 12,
+                borderRadius: 'var(--r-md)',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-secondary)',
+                overflowX: 'auto',
+              }}
+            >
+              <code>{JSON.stringify(health, null, 2)}</code>
+            </pre>
+          )}
+        </div>
+
+        <div className="modal-footer">
           <button
             type="button"
-            className="quiet-button"
+            className="btn btn-secondary btn-sm"
             onClick={() => void onTestInference()}
             disabled={testingInference || overallStatus === 'SERVICE_UNAVAILABLE'}
           >
@@ -204,11 +307,12 @@ export function HealthMonitorModal({
           </button>
           <button
             type="button"
-            className="action-button"
+            className="btn btn-primary btn-sm"
             onClick={() => void onRefresh()}
             disabled={refreshing}
           >
-            {refreshing ? 'Probing…' : 'Check now'}
+            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+            <span>{refreshing ? 'Probing…' : 'Check now'}</span>
           </button>
         </div>
       </section>
@@ -216,23 +320,57 @@ export function HealthMonitorModal({
   );
 }
 
-interface HealthCardProps {
+interface HealthItemProps {
+  icon: React.ReactNode;
   name: string;
+  status: string;
   badge: string;
-  tone: string;
-  details?: string;
+  detail?: string;
+  latency?: number;
   message?: string;
 }
 
-function HealthCard({ name, badge, tone, details, message }: HealthCardProps) {
+function HealthItem({ icon, name, status, badge, detail, latency, message }: HealthItemProps) {
+  const getBadgeClass = () => {
+    switch (status.toUpperCase()) {
+      case 'UP':
+      case 'OPERATIONAL':
+      case 'IDLE':
+        return 'completed';
+      case 'DEGRADED':
+      case 'MISSING':
+      case 'RUNNING':
+        return 'empty';
+      default:
+        return 'failed';
+    }
+  };
+
   return (
-    <div className="health-card">
-      <div className="card-topline">
-        <span className="card-name">{name}</span>
-        <span className={`status-pill ${tone}`}>{badge}</span>
-      </div>
-      {details && <div className="card-details"><code>{details}</code></div>}
-      {message && <div className="card-message">{message}</div>}
+    <div className="health-row">
+      <div style={{ color: 'var(--text-muted)' }}>{icon}</div>
+      <div className="health-row-name">{name}</div>
+      {detail && (
+        <code
+          style={{
+            fontSize: 11,
+            color: 'var(--accent)',
+            fontFamily: 'var(--font-mono)',
+            padding: '1px 6px',
+            background: 'var(--bg-active)',
+            borderRadius: 4,
+          }}
+        >
+          {detail}
+        </code>
+      )}
+      <div className="health-row-msg">{message}</div>
+      {latency !== undefined && (
+        <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>
+          {latency}ms
+        </span>
+      )}
+      <span className={`status-badge ${getBadgeClass()}`}>{badge}</span>
     </div>
   );
 }
