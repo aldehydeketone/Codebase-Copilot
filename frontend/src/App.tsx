@@ -6,6 +6,8 @@ import {
   X,
   Terminal,
 } from 'lucide-react';
+import { DecryptedText } from './components/reactbits/DecryptedText';
+import { Squares } from './components/reactbits/Squares';
 import { ChatPanel } from './components/ChatPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { HealthMonitorModal } from './components/HealthMonitorModal';
@@ -215,7 +217,9 @@ export default function App() {
               <Terminal size={12} />
             </div>
             <div>
-              <span className="topbar-brand-name">Codebase Copilot</span>
+              <span className="topbar-brand-name">
+                <DecryptedText text="Codebase Copilot" speed={35} maxIterations={8} />
+              </span>
               <span className="topbar-brand-sub" style={{ marginLeft: 6 }}>
                 workbench
               </span>
@@ -289,7 +293,16 @@ export default function App() {
       />
 
       {/* ── Main Workspace ────────────────────────────────────── */}
-      <main className="main-workspace">
+      <main className="main-workspace" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+          <Squares
+            speed={0.2}
+            squareSize={48}
+            direction="diagonal"
+            borderColor="rgba(255, 255, 255, 0.025)"
+            hoverFillColor="rgba(224, 160, 48, 0.03)"
+          />
+        </div>
         {repositoryError && (
           <div className="notice-bar error" role="alert">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

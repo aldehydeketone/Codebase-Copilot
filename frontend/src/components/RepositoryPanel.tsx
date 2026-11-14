@@ -8,6 +8,7 @@ import {
 import type { Repository } from '../types';
 import { RepositoryStatus } from './Sidebar';
 import { EmptyWorkspace } from './ChatPanel';
+import { SpotlightCard } from './reactbits/SpotlightCard';
 
 interface RepositoryPanelProps {
   repositories: Repository[];
@@ -69,7 +70,7 @@ export function RepositoryPanel({
           {repositories.map((repo) => {
             const isSelected = selectedRepository?.id === repo.id;
             return (
-              <div
+              <SpotlightCard
                 key={repo.id}
                 role="button"
                 tabIndex={0}
@@ -123,7 +124,7 @@ export function RepositoryPanel({
                     </p>
                   </div>
                 )}
-              </div>
+              </SpotlightCard>
             );
           })}
         </div>

@@ -3,6 +3,7 @@ import { Search, FileCode, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import type { Repository, SearchResult, SourceExcerpt } from '../types';
 import { EmptyWorkspace } from './ChatPanel';
+import { SpotlightCard } from './reactbits/SpotlightCard';
 
 interface SearchPanelProps {
   repository: Repository | null;
@@ -142,9 +143,9 @@ export function SearchPanel({ repository, onInspect }: SearchPanelProps) {
           ) : (
             <div className="search-results" aria-label="Search results">
               {results.map((result, idx) => (
-                <button
-                  type="button"
+                <SpotlightCard
                   key={`${result.filePath}-${result.startLine}-${idx}`}
+                  spotlightColor="rgba(91, 141, 239, 0.08)"
                   className="search-result-card"
                   onClick={() =>
                     onInspect({
@@ -155,26 +156,31 @@ export function SearchPanel({ repository, onInspect }: SearchPanelProps) {
                       score: result.score,
                     })
                   }
-                  title={`Inspect ${result.filePath}`}
                 >
-                  <div className="search-result-header">
-                    <span className="search-result-path">
-                      <FileCode size={13} />
-                      <strong>{result.filePath}</strong>
-                    </span>
-                    <div className="search-result-meta">
-                      <span>
-                        Lines {result.startLine}–{result.endLine}
+                  <button
+                    type="button"
+                    style={{ width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit' }}
+                    title={`Inspect ${result.filePath}`}
+                  >
+                    <div className="search-result-header">
+                      <span className="search-result-path">
+                        <FileCode size={13} />
+                        <strong>{result.filePath}</strong>
                       </span>
-                      <span className="search-result-score">
-                        Score {result.score.toFixed(3)}
-                      </span>
+                      <div className="search-result-meta">
+                        <span>
+                          Lines {result.startLine}–{result.endLine}
+                        </span>
+                        <span className="search-result-score">
+                          Score {result.score.toFixed(3)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <pre className="search-result-snippet">
-                    <code>{result.content}</code>
-                  </pre>
-                </button>
+                    <pre className="search-result-snippet">
+                      <code>{result.content}</code>
+                    </pre>
+                  </button>
+                </SpotlightCard>
               ))}
             </div>
           )}

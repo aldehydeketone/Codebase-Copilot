@@ -1,4 +1,4 @@
-/* hallmark: 2.0.0 · genre: modern-minimal · shape: workbench · theme: console (graphite) · font: Inter, JetBrains Mono · posture: restrained */
+/* Hallmark · v2.0.0 · genre: modern-minimal · shape: app screen · theme: console · posture: restrained · hero: none · nav: edge · footer: none */
 /* critique: hairline panels cut from dark graphite ground, high-contrast monospace code accents, zero decorative glow or AI slop */
 
 :root {
@@ -38,6 +38,15 @@
   --bad-soft:       rgba(248, 81, 73, 0.12);
   --warn:           #d29922;
   --warn-soft:      rgba(210, 153, 34, 0.12);
+
+  /* Component specific declared tokens */
+  --border-ok-soft:       rgba(62, 207, 142, 0.2);
+  --border-cool-soft:     rgba(91, 141, 239, 0.2);
+  --border-bad-soft:      rgba(248, 81, 73, 0.2);
+  --border-accent-soft:   rgba(224, 160, 48, 0.25);
+  --border-warn-soft:     rgba(210, 153, 34, 0.25);
+  --bg-modal-backdrop:    rgba(10, 10, 14, 0.75);
+  --bg-palette-backdrop:  rgba(10, 10, 14, 0.7);
 
   /* Geometry — Crisp 4px / 6px developer radii, strictly hairline borders */
   --r-sm:   3px;
@@ -512,19 +521,19 @@ body {
 .status-badge.completed {
   background-color: var(--ok-soft);
   color: var(--ok);
-  border-color: rgba(62, 207, 142, 0.2);
+  border-color: var(--border-ok-soft);
 }
 
 .status-badge.indexing {
   background-color: var(--cool-soft);
   color: var(--cool);
-  border-color: rgba(91, 141, 239, 0.2);
+  border-color: var(--border-cool-soft);
 }
 
 .status-badge.failed {
   background-color: var(--bad-soft);
   color: var(--bad);
-  border-color: rgba(248, 81, 73, 0.2);
+  border-color: var(--border-bad-soft);
 }
 
 .status-badge.pending,
@@ -572,7 +581,7 @@ body {
   font-size: 11px;
   color: var(--accent);
   background-color: var(--accent-soft);
-  border: 1px solid rgba(224, 160, 48, 0.25);
+  border: 1px solid var(--border-accent-soft);
   padding: 2px 8px;
   border-radius: var(--r-sm);
   margin-bottom: 12px;
@@ -855,7 +864,7 @@ body {
   gap: 8px;
   padding: 10px 14px;
   background-color: var(--bad-soft);
-  border: 1px solid rgba(248, 81, 73, 0.25);
+  border: 1px solid var(--border-bad-soft);
   border-radius: var(--r-sm);
   color: var(--bad);
   font-size: 12px;
@@ -867,7 +876,7 @@ body {
   gap: 8px;
   padding: 10px 14px;
   background-color: var(--warn-soft);
-  border: 1px solid rgba(210, 153, 34, 0.25);
+  border: 1px solid var(--border-warn-soft);
   border-radius: var(--r-sm);
   color: var(--warn);
   font-size: 12px;
@@ -1263,7 +1272,7 @@ body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(10, 10, 14, 0.75);
+  background-color: var(--bg-modal-backdrop);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -1418,7 +1427,7 @@ body {
 .palette-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(10, 10, 14, 0.7);
+  background-color: var(--bg-palette-backdrop);
   z-index: 300;
   display: flex;
   align-items: flex-start;
