@@ -1,223 +1,359 @@
-# CodebaseCopilot
+<div align="center">
 
-A niche developer tool for understanding and searching Java codebases using natural language — built with Spring Boot, Spring AI, pgvector, and React.
+# 🔍 Codebase Copilot
+
+**A developer workbench for understanding Java codebases using natural language.**  
+Ask questions, get cited answers grounded in your actual source code.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-00C7B7?style=flat-square&logo=render&logoColor=white)](https://codebase-copilot-app.onrender.com/)
+[![Backend API](https://img.shields.io/badge/Backend%20API-Render-00C7B7?style=flat-square&logo=render&logoColor=white)](https://codebase-copilot-api-r584.onrender.com/api/health)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring AI](https://img.shields.io/badge/Spring%20AI-1.1.8-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+pgvector-336791?style=flat-square&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-black?style=flat-square)](https://ollama.com/)
+[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+</div>
 
 ---
 
-## Quick Start with Docker (Recommended)
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Chat — RAG Query Console</strong><br/>
+      <img src="docs/screenshots/chat-view.png" alt="Chat view" width="480"/>
+    </td>
+    <td align="center">
+      <strong>Repositories — Indexed Workspaces</strong><br/>
+      <img src="docs/screenshots/repos-view.png" alt="Repositories view" width="480"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Semantic Search with Source Citations</strong><br/>
+      <img src="docs/screenshots/search-view.png" alt="Search view" width="480"/>
+    </td>
+    <td align="center">
+      <strong>Live System Health Monitor</strong><br/>
+      <img src="docs/screenshots/health-modal.png" alt="Health modal" width="480"/>
+    </td>
+  </tr>
+</table>
+
+---
+
+## ✨ Features
+
+- **RAG Chat** — Ask natural language questions about any indexed Java codebase; get grounded answers with file + line citations
+- **Semantic Search** — Vector similarity search over code chunks (cosine distance via pgvector)
+- **Multi-repo support** — Index and switch between multiple Java projects
+- **Source Inspector** — Click any citation to view the exact code snippet inline
+- **Command Palette** — `Ctrl+K` global quick-find across all views
+- **System Health Monitor** — Real-time status of all components (DB, Ollama, chat model, embeddings)
+- **Fully local LLM** — 100% private; no data leaves your machine (Ollama)
+- **Console-style dark UI** — Hallmark-compliant, zero glassmorphism, developer-first aesthetic
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    Browser["🌐 Browser\n(React 19 + TypeScript)"]
+    Nginx["Nginx\n(frontend container :3000)"]
+    Backend["Spring Boot 3.5\n(backend container :8080)"]
+    PG["PostgreSQL 16\n+ pgvector\n(db container :5432)"]
+    Ollama["Ollama\n(host machine :11434)"]
+    
+    Browser -->|"HTTP /api/*"| Nginx
+    Nginx -->|"proxy_pass"| Backend
+    Backend -->|"JPA / pgvector cosine search"| PG
+    Backend -->|"nomic-embed-text 768-dim"| Ollama
+    Backend -->|"qwen3.5:4b RAG chat"| Ollama
+```
+
+### RAG Pipeline
+
+```mermaid
+flowchart LR
+    A["📁 Java Repo\n(local path)"] --> B["JavaFileDiscovery\n.java scanner"]
+    B --> C["JavaSourceParser\nAST → methods/classes"]
+    C --> D["EmbeddingService\nnomic-embed-text 768d"]
+    D --> E["pgvector\nCodeChunk table"]
+    
+    Q["❓ User Question"] --> F["EmbeddingService\nembed query"]
+    F --> G["SemanticSearchService\ncosine distance < 0.52"]
+    G --> H["QueryAwareSearchRanker\nboost impls over declarations"]
+    E --> G
+    H --> I["RagChatService\nSpring AI + qwen3.5:4b"]
+    I --> J["✅ Grounded Answer\n+ File Citations"]
+```
+
+### Data Model
+
+```mermaid
+erDiagram
+    REPOSITORY {
+        uuid id PK
+        string name
+        string source_path
+        string indexing_status
+        int indexed_file_count
+        int indexed_chunk_count
+        timestamp created_at
+    }
+    FILE {
+        uuid id PK
+        uuid repository_id FK
+        string file_path
+        string package_name
+        timestamp indexed_at
+    }
+    CODE_CHUNK {
+        uuid id PK
+        uuid file_id FK
+        int chunk_index
+        text content
+        string symbol_name
+        int start_line
+        int end_line
+        vector_768 embedding
+        timestamp created_at
+    }
+    REPOSITORY ||--o{ FILE : "contains"
+    FILE ||--o{ CODE_CHUNK : "split into"
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Spring Boot 3.5.16, Spring AI 1.1.8, Spring Data JPA |
+| **AI / LLM** | Ollama — `qwen3.5:4b` (chat), `nomic-embed-text` (768-dim embeddings) |
+| **Database** | PostgreSQL 16 + pgvector extension |
+| **Frontend** | React 19, TypeScript 5.8, Vite 6, Lucide icons |
+| **Infra** | Docker Compose (3-container), Nginx reverse proxy |
+| **Testing** | Vitest (8 unit tests), Spring Boot Test (12 unit/integration tests) |
+| **CI/Deploy** | Render (frontend + backend), Cloudflare Tunnel (Ollama bridge) |
+
+---
+
+## 🚀 Quick Start (Docker)
 
 ### Prerequisites
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Linux container mode)
-- [Ollama](https://ollama.com/) installed and running on your machine (Windows service on port 11434)
+- [Ollama](https://ollama.com/) installed and running (`localhost:11434`)
 - Git
 
-### 1. Pull Ollama models (one-time)
+### 1. Pull Ollama models
 
-```powershell
+```bash
 ollama pull qwen3.5:4b
 ollama pull nomic-embed-text
 ```
 
-> **Note:** `qwen3.5:4b` requires ~4 GB RAM for inference. On a CPU-only machine (e.g., i5/16 GB), cold-start takes ~60-340 s; warm repeated queries take ~10-25 s.
+> `qwen3.5:4b` needs ~4 GB RAM. Cold-start: ~60–340 s on CPU. Warm queries: ~10–25 s.
 
-### 2. Configure environment
+### 2. Clone & configure
 
-```powershell
-Copy-Item .env.example .env
-# Open .env and set COPILOT_DB_PASSWORD to a strong password
-notepad .env
+```bash
+git clone https://github.com/aldehydeketone/Codebase-Copilot.git
+cd Codebase-Copilot
+cp .env.example .env
+# Edit .env — set COPILOT_DB_PASSWORD to anything strong
 ```
 
 ### 3. Start all services
 
-```powershell
+```bash
 docker compose up -d
-docker compose ps      # verify all containers are healthy
+docker compose ps    # all 3 containers should be healthy
 ```
 
-This starts:
 | Container | Port | Purpose |
-|---|---|---|
+|-----------|------|---------|
 | `codebase-copilot-db` | `127.0.0.1:5433` | PostgreSQL 16 + pgvector |
 | `codebase-copilot-backend` | `127.0.0.1:8080` | Spring Boot API |
 | `codebase-copilot-frontend` | `127.0.0.1:3000` | React UI (Nginx) |
 
 ### 4. Open the app
 
-Navigate to **http://localhost:3000** in your browser.
-
-### 5. Import a Java repository
-
-Click **[+ Import repository]** and provide the absolute path to a Java project on your machine (e.g. `D:\src\my-java-app`). Indexing runs in the background; status updates appear in the UI.
+Navigate to **http://localhost:3000** and click **[+ Import repository]** to index a Java project by its absolute path.
 
 ---
 
-## Stopping and Starting
+## 💻 Local Development (no Docker for backend/frontend)
 
-```powershell
-# Pause containers — volumes and data are preserved
-docker compose stop
+> Requirements: Java 21, Maven 3.9+, Node.js 20+, Docker (for DB only)
 
-# Resume
-docker compose start
+```bash
+# 1. Start only the database
+docker compose up -d db
 
-# Remove containers but keep data volumes
-docker compose down
+# 2. Run backend
+mvn spring-boot:run
 
-# ⚠️  NEVER run this — it deletes the database permanently
-# docker compose down -v
+# 3. Run frontend dev server (separate terminal)
+cd frontend
+npm ci
+npm run dev
+# → http://localhost:5173 (Vite proxies /api → :8080)
 ```
 
 ---
 
-## Environment Variables
+## 🔌 API Reference
 
-All configuration is via `.env` in the project root (gitignored). See [`.env.example`](.env.example) for all variables.
+### Health check
+```bash
+GET /api/health
+```
+```json
+{
+  "status": "OPERATIONAL",
+  "checks": {
+    "ollama": { "status": "UP", "latencyMs": 263 },
+    "chatModel": { "status": "UP", "model": "qwen3.5:4b" },
+    "embeddingModel": { "status": "UP", "model": "nomic-embed-text" },
+    "database": { "status": "UP", "latencyMs": 7 }
+  }
+}
+```
+
+### Import a repository
+```bash
+POST /api/repositories/import
+Content-Type: application/json
+
+{ "path": "/absolute/path/to/java-project", "name": "my-project" }
+```
+
+### Semantic search
+```bash
+POST /api/search
+Content-Type: application/json
+
+{ "query": "Where is the order total calculated?", "repositoryId": "<uuid>", "limit": 5 }
+```
+
+### RAG chat
+```bash
+POST /api/chat
+Content-Type: application/json
+
+{ "question": "How does authentication work?", "repositoryId": "<uuid>", "topK": 5 }
+```
+
+Response includes `answer` (Markdown string) and `citations` (file path + line ranges + snippet).
+
+---
+
+## 🧪 Tests
+
+```bash
+# Frontend — 8 unit tests
+cd frontend && npm test
+
+# Backend — unit tests (H2 in-memory, no external services)
+mvn clean verify
+
+# Backend — full pipeline integration test (needs live PostgreSQL + Ollama)
+mvn -Dtest=RealPipelineIntegrationTest -DrealIntegration=true test
+
+# Frontend production build
+cd frontend && npm run build
+```
+
+---
+
+## ⚙️ Environment Variables
 
 | Variable | Default | Description |
-|---|---|---|
-| `COPILOT_DB_HOST` | `127.0.0.1` | PostgreSQL host (local dev only; Docker uses `db`) |
+|----------|---------|-------------|
+| `COPILOT_DB_HOST` | `127.0.0.1` | PostgreSQL host |
 | `COPILOT_DB_PORT` | `5433` | PostgreSQL port |
 | `COPILOT_DB_NAME` | `copilot_db` | Database name |
 | `COPILOT_DB_USER` | `copilot_user` | Database user |
 | `COPILOT_DB_PASSWORD` | *(required)* | Database password |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
-| `OLLAMA_CHAT_MODEL` | `qwen3.5:4b` | Chat model |
+| `OLLAMA_CHAT_MODEL` | `qwen3.5:4b` | Chat LLM model |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model (768-dim) |
-| `OLLAMA_CHAT_KEEP_ALIVE` | `10m` | Keep model in RAM after last call |
+| `OLLAMA_CHAT_KEEP_ALIVE` | `10m` | Keep model loaded in RAM |
 | `OLLAMA_CHAT_READ_TIMEOUT` | `420s` | HTTP read timeout for chat |
-| `BACKEND_EXTERNAL_PORT` | `8080` | Host port for backend (optional override) |
-| `FRONTEND_EXTERNAL_PORT` | `3000` | Host port for frontend (optional override) |
+| `BACKEND_EXTERNAL_PORT` | `8080` | Host port for backend |
+| `FRONTEND_EXTERNAL_PORT` | `3000` | Host port for frontend |
 
 ---
 
-## Local Development (without Docker for backend/frontend)
+## 🗃️ Docker Operations
 
-Prerequisites: Java 21, Maven, Node.js 20+, Docker Desktop (for the DB container).
+```bash
+# Stop (preserve data volumes)
+docker compose stop
 
-```powershell
-# 1. Start the database
-docker compose up -d db
+# Resume
+docker compose start
 
-# 2. Build and test backend
-mvn clean verify
+# Remove containers but keep DB data
+docker compose down
 
-# 3. Start backend
-mvn spring-boot:run
+# ⚠️ WARNING — this DELETES the database permanently
+# docker compose down -v
 
-# 4. Start frontend dev server (separate terminal)
-cd frontend
-npm ci
-npm run dev
-```
+# Rebuild a single image
+docker compose build backend
 
-Open `http://127.0.0.1:3000`. The Vite dev server proxies `/api` to `http://127.0.0.1:8080`.
-
----
-
-## API Reference
-
-### Import a repository
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/repositories/import `
-  -ContentType 'application/json' `
-  -Body '{"path":"D:\\src\\my-java-app","name":"my-java-app"}'
-```
-
-Response includes `id` (UUID), `status` (`COMPLETED`, `COMPLETED_EMPTY`, `FAILED`), and counts.
-
-### Semantic search
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/search `
-  -ContentType 'application/json' `
-  -Body '{"query":"Where is the order total calculated?","repositoryId":"<uuid>","limit":5}'
-```
-
-### RAG chat
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/chat `
-  -ContentType 'application/json' `
-  -Body '{"question":"How does authentication work?","repositoryId":"<uuid>","chunks":[...]}'
-```
-
-### Health check
-
-```powershell
-Invoke-RestMethod http://localhost:8080/api/health
+# Database backup
+docker compose exec db pg_dump -U copilot_user copilot_db > backup_$(date +%Y%m%d).sql
 ```
 
 ---
 
-## Tests
+## 📂 Project Structure
 
-```powershell
-# Backend unit + integration tests (H2 in-memory, no external services required)
-mvn clean verify
-
-# Backend real-pipeline integration test (requires live PostgreSQL + Ollama)
-mvn "-Dtest=RealPipelineIntegrationTest" -DrealIntegration=true test
-
-# Frontend unit tests
-cd frontend
-npx vitest run --pool=forks
-
-# Frontend production build
-npm run build
+```
+CodebaseCopilot/
+├── src/main/java/com/copilot/
+│   ├── controller/          # REST endpoints (Chat, Search, Repository, Health)
+│   ├── service/
+│   │   ├── ingestion/       # JavaFileDiscovery, JavaSourceParser, RepositoryIndexer
+│   │   ├── embedding/       # EmbeddingService (nomic-embed-text)
+│   │   ├── search/          # SemanticSearchService, QueryAwareSearchRanker
+│   │   └── rag/             # RagChatService (Spring AI + Ollama)
+│   ├── model/               # JPA entities (Repository, File, CodeChunk)
+│   └── config/              # CORS, Ollama client, filters
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # ChatPanel, SearchPanel, RepositoryPanel, Sidebar…
+│   │   ├── services/        # api.ts (typed HTTP client)
+│   │   └── design.css       # Console theme (Hallmark-compliant, 0 FAIL)
+│   └── vite.config.ts
+├── docs/screenshots/        # UI screenshots
+├── docker-compose.yml
+├── Dockerfile
+└── pom.xml
 ```
 
 ---
 
-## Docker Build Only
+## 🔒 Privacy
 
-```powershell
-docker compose build          # build all images
-docker compose build backend  # rebuild only the backend image
-```
+All LLM inference runs locally via Ollama. **No code, queries, or answers are sent to any external API.** The only network calls are:
+- pgvector queries (local Docker container)
+- Ollama HTTP calls (`localhost:11434`)
 
----
-
-## Database Backup
-
-```powershell
-docker compose exec db pg_dump -U copilot_user copilot_db > backups\backup_$(Get-Date -Format yyyyMMdd_HHmmss).dump
-```
+When deployed to Render, a Cloudflare Tunnel bridges the Render backend to your local Ollama instance.
 
 ---
 
-## Architecture
+## 📄 License
 
-```
-Browser (React/Vite)
-      │  HTTP /api/*
-      ▼
-  Nginx (frontend container, port 3000)
-      │  proxy_pass http://backend:8080/api/
-      ▼
-  Spring Boot (backend container, port 8080)
-      │                        │
-      ▼                        ▼
-  PostgreSQL + pgvector    Ollama (host machine, port 11434)
-  (db container, port 5432) accessed via host.docker.internal
-```
-
-- **Parsing:** Java AST via JDK compiler API → methods, classes, line ranges
-- **Embedding:** `nomic-embed-text` (768-dim) via Ollama
-- **Search:** cosine distance via pgvector with a 0.52 minimum score floor
-- **Ranking:** `QueryAwareSearchRanker` boosts implementation code over declarations
-- **Chat:** Spring AI `RagChatService` with grounded citation validation
-
----
-
-## Placement Demo Notes
-
-To run a live demo without a public server:
-
-1. Start everything with `docker compose up -d`
-2. Verify `http://localhost:3000` loads and `/api/health` returns `UP`
-3. Import a prepared Java repository before the demo (indexing takes ~10-60 s depending on size)
-4. Keep the model warm: run one test chat query beforehand
-5. For a remote demo over a video call, share your screen — no deployment needed
-6. Optional: expose via ngrok: `ngrok http 3000` (ngrok account required)
+MIT © [aldehydeketone](https://github.com/aldehydeketone)
