@@ -121,7 +121,7 @@ export function Squares({
         inset: 0,
         width: '100%',
         height: '100%',
-        pointerEvents: 'auto',
+        pointerEvents: 'none',
         opacity: 0.6,
       }}
       aria-hidden="true"

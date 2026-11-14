@@ -555,6 +555,8 @@ body {
 
 /* ── Chat View (Terminal Query Console) ───────────────────── */
 .chat-view {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -962,6 +964,8 @@ body {
 
 /* ── Code Search View (Clean Filterable Stream) ────────────── */
 .search-view {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1087,6 +1091,8 @@ body {
 
 /* ── Repositories Table / Grid (Dense Workbench Catalog) ──── */
 .repos-view {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
