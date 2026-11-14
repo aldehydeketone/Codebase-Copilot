@@ -1,4 +1,4 @@
-import { FileCode, X, Copy, Check, ExternalLink } from 'lucide-react';
+import { FileCode, X, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import type { Repository, SourceExcerpt } from '../types';
 import { RepositoryStatus } from './Sidebar';
@@ -24,45 +24,28 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
       <aside className="code-drawer" aria-label="Source inspector">
         <div className="drawer-header">
           <div className="drawer-title">
-            <FileCode size={14} className="drawer-title-icon" />
+            <FileCode size={13} className="drawer-title-icon" />
             <span>Source Inspector</span>
           </div>
         </div>
-        <div className="empty-workspace-state" style={{ padding: '32px 20px' }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 'var(--r-md)',
-              background: 'var(--bg-card)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-muted)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <FileCode size={16} />
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Select a search result or citation to inspect its returned snippet.
-          </p>
+        <div style={{ padding: '24px 20px', color: 'var(--text-muted)', fontSize: 12 }}>
+          <p>Select a search result or citation to inspect its returned snippet.</p>
           {repository && (
             <div
               style={{
                 marginTop: 16,
                 padding: '10px 12px',
-                background: 'var(--bg-card)',
+                backgroundColor: 'var(--bg-input)',
                 border: '1px solid var(--border)',
-                borderRadius: 'var(--r-md)',
-                width: '100%',
-                textAlign: 'left',
+                borderRadius: 'var(--r-sm)',
               }}
             >
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Active Repository
+              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                Target Repository
               </div>
-              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 2 }}>{repository.name}</div>
+              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                {repository.name}
+              </div>
               <div style={{ marginTop: 6 }}>
                 <RepositoryStatus status={repository.indexingStatus} />
               </div>
@@ -79,7 +62,7 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
     <aside className="code-drawer" aria-label="Source inspector">
       <div className="drawer-header">
         <div className="drawer-title truncate">
-          <FileCode size={14} className="drawer-title-icon" />
+          <FileCode size={13} className="drawer-title-icon" />
           <span className="truncate">{source.filePath.split('/').pop() || source.filePath}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -89,7 +72,7 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
             onClick={copyCode}
             title="Copy snippet"
           >
-            {copied ? <Check size={12} className="text-accent" /> : <Copy size={12} />}
+            {copied ? <Check size={12} style={{ color: 'var(--ok)' }} /> : <Copy size={12} />}
           </button>
           {onClose && (
             <button
@@ -98,7 +81,7 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
               onClick={onClose}
               aria-label="Close inspector drawer"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
@@ -117,7 +100,7 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
             </span>
           )}
         </div>
-        <p className="excerpt-warning" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+        <p className="excerpt-warning" style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
           Returned snippet only; full source is not available through the current API.
         </p>
       </div>
@@ -143,16 +126,18 @@ export function SourceInspector({ repository, source, onClose }: SourceInspector
       {repository && (
         <div
           style={{
-            padding: '8px 14px',
+            padding: '6px 14px',
             borderTop: '1px solid var(--border)',
             fontSize: 10,
-            color: 'var(--text-xmuted)',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-dim)',
             display: 'flex',
             justifyContent: 'space-between',
+            backgroundColor: 'var(--bg-surface)',
           }}
         >
           <span>Repository: {repository.name}</span>
-          <span>Indexed chunk snippet</span>
+          <span>Indexed chunk</span>
         </div>
       )}
     </aside>

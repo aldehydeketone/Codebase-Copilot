@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Search, FileCode, Sparkles, AlertCircle } from 'lucide-react';
+import { Search, FileCode, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import type { Repository, SearchResult, SourceExcerpt } from '../types';
 import { EmptyWorkspace } from './ChatPanel';
@@ -66,7 +66,7 @@ export function SearchPanel({ repository, onInspect }: SearchPanelProps) {
 
         {repository && (
           <form onSubmit={submit} className="search-input-wrap">
-            <Search size={15} className="search-input-icon" />
+            <Search size={14} className="search-input-icon" />
             <label htmlFor="code-search-query" className="sr-only">
               Search by intent or behavior
             </label>
@@ -85,7 +85,7 @@ export function SearchPanel({ repository, onInspect }: SearchPanelProps) {
             <div
               style={{
                 position: 'absolute',
-                right: 8,
+                right: 6,
                 top: '50%',
                 transform: 'translateY(-50%)',
                 display: 'flex',
@@ -121,40 +121,22 @@ export function SearchPanel({ repository, onInspect }: SearchPanelProps) {
           )}
 
           {!searched && !loading ? (
-            <div className="empty-workspace-state">
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 'var(--r-xl)',
-                  background: 'var(--bg-card)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--accent)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                <Sparkles size={20} />
-              </div>
-              <h2 style={{ fontSize: 15, color: 'var(--text-primary)' }}>Vector Similarity Search</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 360 }}>
+            <div className="chat-empty-console">
+              <div className="console-prompt-badge">search :: vector embedding index</div>
+              <h2 className="console-empty-title">Semantic Code Search</h2>
+              <p className="console-empty-desc">
                 Query by natural language behavior, algorithm, or intent. The nomic-embed-text model maps questions into the Java codebase embedding space.
               </p>
             </div>
           ) : loading ? (
-            <div style={{ padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
               <div className="thinking-indicator" role="status">
-                <div className="thinking-dots" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
+                <span className="thinking-pulse-line" aria-hidden="true" />
                 <span>Embedding query & querying pgvector database…</span>
               </div>
             </div>
           ) : results.length === 0 ? (
-            <div className="empty-workspace-state">
+            <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <p>No matching code snippets found for this query.</p>
             </div>
           ) : (

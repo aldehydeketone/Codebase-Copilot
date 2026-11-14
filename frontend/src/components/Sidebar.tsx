@@ -6,7 +6,6 @@ import {
   Plus,
   RefreshCw,
   ChevronDown,
-  Layers,
   FileCode,
 } from 'lucide-react';
 import type { Repository, WorkspaceView } from '../types';
@@ -25,15 +24,6 @@ interface SidebarProps {
 export function RepositoryStatus({ status }: { status: string | null }) {
   const value = status || 'UNKNOWN';
 
-  if (value === 'INDEXING') {
-    return (
-      <span className="status-badge indexing">
-        <span className="badge-pulse" aria-hidden="true" />
-        INDEXING
-      </span>
-    );
-  }
-
   const toneClass =
     value === 'COMPLETED'
       ? 'completed'
@@ -41,7 +31,9 @@ export function RepositoryStatus({ status }: { status: string | null }) {
         ? 'empty'
         : value === 'FAILED'
           ? 'failed'
-          : 'pending';
+          : value === 'INDEXING'
+            ? 'indexing'
+            : 'pending';
 
   // Integration test relies on 'no Java code' label
   const label =
@@ -88,13 +80,13 @@ export function Sidebar({
           aria-label="Active repository selector"
           title="Switch Active Repository"
         >
-          <FolderGit2 size={14} className="text-accent" />
+          <FolderGit2 size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
           {selectedRepo ? (
             <span className="repo-select-name">{selectedRepo.name}</span>
           ) : (
             <span className="repo-select-placeholder">Select repository...</span>
           )}
-          <ChevronDown size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+          <ChevronDown size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
         </button>
 
         {dropdownOpen && (
@@ -109,9 +101,9 @@ export function Sidebar({
                   setDropdownOpen(false);
                 }}
               >
-                <FolderGit2 size={13} />
+                <FolderGit2 size={12} />
                 <span className="truncate" style={{ flex: 1 }}>{repo.name}</span>
-                <span className="repo-dropdown-item-status">{repo.indexedFileCount}f</span>
+                <span className="repo-dropdown-item-status">{repo.indexedFileCount} files</span>
               </button>
             ))}
             <button
@@ -122,7 +114,7 @@ export function Sidebar({
                 onImport();
               }}
             >
-              <Plus size={13} />
+              <Plus size={12} />
               <span>Import repository</span>
             </button>
           </div>
@@ -144,16 +136,16 @@ export function Sidebar({
             >
               <Icon size={14} className="nav-icon" />
               <span style={{ flex: 1 }}>{item.label}</span>
-              <kbd className="kbd" style={{ opacity: 0.6, fontSize: 9 }}>{item.shortcut}</kbd>
+              <kbd className="kbd" style={{ fontSize: 9 }}>{item.shortcut}</kbd>
             </button>
           );
         })}
       </nav>
 
-      {/* Repository Section */}
+      {/* Repository Section — Untracked sentence case (Hallmark Floor 9) */}
       <div className="sidebar-section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 12 }}>
         <span>Repositories</span>
-        <span style={{ fontSize: 10, background: 'var(--bg-active)', padding: '1px 6px', borderRadius: 999 }}>
+        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
           {repositories.length}
         </span>
       </div>
@@ -165,7 +157,7 @@ export function Sidebar({
           style={{ width: '100%', justifyContent: 'center', gap: 6 }}
           onClick={onImport}
         >
-          <Plus size={12} />
+          <Plus size={11} />
           <span>[+] Import repository</span>
         </button>
       </div>
@@ -195,15 +187,7 @@ export function Sidebar({
                   <RepositoryStatus status={repo.indexingStatus} />
                 </div>
                 <div className="sidebar-repo-item-meta">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                    <FileCode size={10} />
-                    {repo.indexedFileCount}
-                  </span>
-                  <span>·</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                    <Layers size={10} />
-                    {repo.indexedChunkCount}
-                  </span>
+                  <span>{repo.indexedFileCount} files, {repo.indexedChunkCount} chunks</span>
                 </div>
               </button>
             );
@@ -218,12 +202,12 @@ export function Sidebar({
           className="btn btn-ghost btn-sm"
           onClick={onRefresh}
           disabled={loading}
-          style={{ fontSize: 11, padding: '4px 6px' }}
+          style={{ fontSize: 11, padding: '2px 6px' }}
         >
           <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           <span>Refresh list</span>
         </button>
-        <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>v1.0.0</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>v1.0.0</span>
       </div>
     </aside>
   );

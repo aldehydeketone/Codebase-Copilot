@@ -49,7 +49,7 @@ export function CommandPalette({
     if (isOpen) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 40);
     }
   }, [isOpen]);
 
@@ -108,7 +108,7 @@ export function CommandPalette({
       id: 'sys-health',
       category: 'System',
       label: 'Open System Health Monitor',
-      sublabel: 'Live diagnostic probes for PostgreSQL, Ollama & models',
+      sublabel: 'Diagnostic telemetry for PostgreSQL, Ollama & models',
       icon: Activity,
       shortcut: '⌘H',
       onSelect: () => {
@@ -120,7 +120,7 @@ export function CommandPalette({
       id: `repo-${repo.id}`,
       category: 'Repositories' as const,
       label: repo.name,
-      sublabel: `${repo.indexedFileCount} files · ${repo.indexedChunkCount} chunks · ${repo.indexingStatus || 'READY'}`,
+      sublabel: `${repo.indexedFileCount} files, ${repo.indexedChunkCount} chunks`,
       icon: FolderGit2,
       shortcut: repo.id === selectedRepositoryId ? 'Active' : undefined,
       onSelect: () => {
@@ -131,8 +131,8 @@ export function CommandPalette({
     {
       id: 'link-gh',
       category: 'Links',
-      label: 'Open GitHub Repository',
-      sublabel: 'aldehydeketone/Codebase-Copilot',
+      label: 'GitHub: aldehydeketone/Codebase-Copilot',
+      sublabel: 'Open source repository',
       icon: ExternalLink,
       onSelect: () => {
         window.open('https://github.com/aldehydeketone/Codebase-Copilot', '_blank');
@@ -176,11 +176,11 @@ export function CommandPalette({
     >
       <div className="palette-box" role="dialog" aria-modal="true" aria-label="Command Palette">
         <div className="palette-input-row">
-          <Search size={16} className="text-muted" />
+          <Search size={14} style={{ color: 'var(--text-muted)' }} />
           <input
             ref={inputRef}
             className="palette-input"
-            placeholder="Type a command or search repositories..."
+            placeholder="Search commands or switch repository..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -210,15 +210,15 @@ export function CommandPalette({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
                     <span style={{ fontWeight: 500 }}>{item.label}</span>
                     {item.sublabel && (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.sublabel}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {item.sublabel}
+                      </span>
                     )}
                   </div>
                   {item.shortcut && (
-                    <div className="palette-item-kbd">
-                      <kbd className="kbd">{item.shortcut}</kbd>
-                    </div>
+                    <kbd className="kbd">{item.shortcut}</kbd>
                   )}
-                  <ArrowRight size={12} style={{ opacity: isSelected ? 0.8 : 0.2, transition: 'opacity 0.15s' }} />
+                  <ArrowRight size={12} style={{ opacity: isSelected ? 0.8 : 0.2 }} />
                 </button>
               );
             })

@@ -4,7 +4,7 @@ import {
   Activity,
   AlertCircle,
   X,
-  Code2,
+  Terminal,
 } from 'lucide-react';
 import { ChatPanel } from './components/ChatPanel';
 import { CommandPalette } from './components/CommandPalette';
@@ -200,7 +200,7 @@ export default function App() {
 
   return (
     <div className={`app-shell ${source ? 'drawer-open' : ''}`}>
-      {/* ── Topbar ────────────────────────────────────────────── */}
+      {/* ── Topbar (Engineered Minimal Terminal Bar) ──────────── */}
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <a
@@ -212,7 +212,7 @@ export default function App() {
             }}
           >
             <div className="topbar-brand-icon">
-              <Code2 size={15} />
+              <Terminal size={12} />
             </div>
             <div>
               <span className="topbar-brand-name">Codebase Copilot</span>
@@ -252,7 +252,7 @@ export default function App() {
             <span className={`health-pill-dot ${dotTone}`} aria-hidden="true" />
             <span>{overallLabel}</span>
             {lastCheckedTime && (
-              <span style={{ fontSize: 10, color: 'var(--text-xmuted)' }} aria-hidden="true">
+              <span style={{ fontSize: 10, color: 'var(--text-dim)' }} aria-hidden="true">
                 ({lastCheckedTime})
               </span>
             )}

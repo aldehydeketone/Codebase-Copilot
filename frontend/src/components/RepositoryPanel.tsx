@@ -1,11 +1,9 @@
 import {
   FolderGit2,
   Plus,
-  FileCode,
-  Layers,
   Calendar,
   AlertTriangle,
-  HardDrive,
+  FileCode,
 } from 'lucide-react';
 import type { Repository } from '../types';
 import { RepositoryStatus } from './Sidebar';
@@ -22,13 +20,13 @@ interface RepositoryPanelProps {
 function dateLabel(value: string | null): string {
   if (!value) return 'Not reported';
   const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return Number.isNaN(date.valueOf())
+    ? value
+    : date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
 }
 
 export function RepositoryPanel({
@@ -50,13 +48,13 @@ export function RepositoryPanel({
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={onImport}>
-          <Plus size={14} />
+          <Plus size={13} />
           <span>Import repository</span>
         </button>
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
           <p style={{ color: 'var(--text-muted)' }} role="status">
             Loading repositories…
           </p>
@@ -81,64 +79,42 @@ export function RepositoryPanel({
                   if (e.key === 'Enter' || e.key === ' ') onSelect(repo);
                 }}
               >
-                <div className="repo-card-top">
-                  <div className="repo-card-icon">
-                    <FolderGit2 size={16} />
+                <div className="repo-card-main">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FolderGit2 size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <h3 className="repo-card-name">{repo.name}</h3>
+                    <RepositoryStatus status={repo.indexingStatus} />
+                    {isSelected && (
+                      <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600, marginLeft: 4 }}>
+                        [active]
+                      </span>
+                    )}
                   </div>
-                  <RepositoryStatus status={repo.indexingStatus} />
-                </div>
-
-                <div>
-                  <h3 className="repo-card-name">{repo.name}</h3>
                   <p className="repo-card-path" title={repo.sourcePath}>
                     {repo.sourcePath}
                   </p>
                 </div>
 
                 <div className="repo-card-stats">
-                  <div className="repo-stat">
-                    <span className="repo-stat-value">{repo.indexedFileCount}</span>
-                    <span className="repo-stat-label">Files</span>
-                  </div>
-                  <div style={{ width: 1, background: 'var(--border)' }} />
-                  <div className="repo-stat">
-                    <span className="repo-stat-value">{repo.indexedChunkCount}</span>
-                    <span className="repo-stat-label">Chunks</span>
-                  </div>
-                  <div style={{ width: 1, background: 'var(--border)' }} />
-                  <div className="repo-stat">
-                    <span className="repo-stat-value" style={{ fontSize: 11, fontWeight: 500 }}>
-                      {repo.sourceType}
-                    </span>
-                    <span className="repo-stat-label">Source</span>
-                  </div>
-                </div>
-
-                <div className="repo-card-footer">
-                  <span style={{ fontSize: 10, color: 'var(--text-xmuted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Calendar size={10} />
-                    {dateLabel(repo.createdAt)}
-                  </span>
-                  {isSelected && (
-                    <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>
-                      Active
-                    </span>
-                  )}
+                  <span>{repo.indexedFileCount} files</span>
+                  <span>{repo.indexedChunkCount} chunks</span>
+                  <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>{dateLabel(repo.createdAt)}</span>
                 </div>
 
                 {repo.indexingStatus === 'COMPLETED_EMPTY' && (
                   <div
                     style={{
+                      width: '100%',
                       marginTop: 8,
                       padding: 10,
-                      background: 'rgba(234, 179, 8, 0.08)',
-                      border: '1px solid rgba(234, 179, 8, 0.2)',
-                      borderRadius: 'var(--r-md)',
+                      backgroundColor: 'var(--warn-soft)',
+                      border: '1px solid rgba(210, 153, 34, 0.25)',
+                      borderRadius: 'var(--r-sm)',
                       fontSize: 11,
                     }}
                     role="status"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fde68a', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warn)', fontWeight: 600 }}>
                       <AlertTriangle size={13} />
                       <span>Scan completed; no Java code was indexed.</span>
                     </div>

@@ -46,18 +46,18 @@ export function HealthMonitorModal({
       case 'OPERATIONAL':
       case 'IDLE':
       case 'COMPLETED':
-        return <CheckCircle2 size={16} className="health-status-icon up" />;
+        return <CheckCircle2 size={15} style={{ color: 'var(--ok)' }} />;
       case 'DEGRADED':
       case 'MISSING':
       case 'RUNNING':
-        return <AlertTriangle size={16} className="health-status-icon degraded" />;
+        return <AlertTriangle size={15} style={{ color: 'var(--warn)' }} />;
       case 'DOWN':
       case 'SERVICE_UNAVAILABLE':
       case 'TIMEOUT':
       case 'FAILED':
-        return <XCircle size={16} className="health-status-icon down" />;
+        return <XCircle size={15} style={{ color: 'var(--bad)' }} />;
       default:
-        return <HelpCircle size={16} className="health-status-icon unknown" />;
+        return <HelpCircle size={15} style={{ color: 'var(--text-dim)' }} />;
     }
   };
 
@@ -112,7 +112,7 @@ export function HealthMonitorModal({
       >
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Activity size={16} className="text-accent" />
+            <Activity size={15} style={{ color: 'var(--cool)' }} />
             <h2 id="health-modal-title" className="modal-title">
               Live System Health Monitor
             </h2>
@@ -130,13 +130,13 @@ export function HealthMonitorModal({
         {/* Overall Status Banner */}
         <div
           style={{
-            padding: '12px 20px',
-            background:
+            padding: '10px 16px',
+            backgroundColor:
               overallStatus === 'OPERATIONAL'
-                ? 'rgba(16, 185, 129, 0.08)'
+                ? 'var(--ok-soft)'
                 : overallStatus === 'DEGRADED'
-                  ? 'rgba(234, 179, 8, 0.08)'
-                  : 'rgba(239, 68, 68, 0.08)',
+                  ? 'var(--warn-soft)'
+                  : 'var(--bad-soft)',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
@@ -146,14 +146,14 @@ export function HealthMonitorModal({
           <div>
             <div
               style={{
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 color:
                   overallStatus === 'OPERATIONAL'
-                    ? 'var(--status-green)'
+                    ? 'var(--ok)'
                     : overallStatus === 'DEGRADED'
-                      ? 'var(--status-yellow)'
-                      : 'var(--status-red)',
+                      ? 'var(--warn)'
+                      : 'var(--bad)',
               }}
             >
               {headline.label}
@@ -162,13 +162,13 @@ export function HealthMonitorModal({
               {headline.desc}
             </div>
           </div>
-          <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
             {lastCheckedTime || 'Pending'}
           </span>
         </div>
 
         {/* Tab buttons */}
-        <div style={{ display: 'flex', padding: '0 20px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', padding: '0 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
           <button
             type="button"
             className="btn btn-ghost"
@@ -177,7 +177,7 @@ export function HealthMonitorModal({
               borderBottom: activeTab === 'overview' ? '2px solid var(--accent)' : '2px solid transparent',
               color: activeTab === 'overview' ? 'var(--text-primary)' : 'var(--text-muted)',
               fontSize: 12,
-              padding: '10px 12px',
+              padding: '8px 12px',
             }}
             onClick={() => setActiveTab('overview')}
           >
@@ -191,7 +191,7 @@ export function HealthMonitorModal({
               borderBottom: activeTab === 'raw' ? '2px solid var(--accent)' : '2px solid transparent',
               color: activeTab === 'raw' ? 'var(--text-primary)' : 'var(--text-muted)',
               fontSize: 12,
-              padding: '10px 12px',
+              padding: '8px 12px',
             }}
             onClick={() => setActiveTab('raw')}
           >
@@ -282,9 +282,9 @@ export function HealthMonitorModal({
           ) : (
             <pre
               style={{
-                background: 'var(--code-bg)',
+                backgroundColor: 'var(--bg-code)',
                 padding: 12,
-                borderRadius: 'var(--r-md)',
+                borderRadius: 'var(--r-sm)',
                 fontSize: 11,
                 fontFamily: 'var(--font-mono)',
                 color: 'var(--text-secondary)',
@@ -356,9 +356,9 @@ function HealthItem({ icon, name, status, badge, detail, latency, message }: Hea
             fontSize: 11,
             color: 'var(--accent)',
             fontFamily: 'var(--font-mono)',
-            padding: '1px 6px',
-            background: 'var(--bg-active)',
-            borderRadius: 4,
+            padding: '1px 4px',
+            backgroundColor: 'var(--bg-elevated)',
+            borderRadius: 'var(--r-sm)',
           }}
         >
           {detail}
@@ -366,7 +366,7 @@ function HealthItem({ icon, name, status, badge, detail, latency, message }: Hea
       )}
       <div className="health-row-msg">{message}</div>
       {latency !== undefined && (
-        <span style={{ fontSize: 10, color: 'var(--text-xmuted)', fontFamily: 'var(--font-mono)' }}>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
           {latency}ms
         </span>
       )}
