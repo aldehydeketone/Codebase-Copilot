@@ -99,9 +99,12 @@ export default function App() {
     try {
       const items = await api.listRepositories();
       setRepositories(items);
-      setSelectedRepositoryId((current) =>
-        current && items.some((item) => item.id === current) ? current : items[0]?.id ?? null,
-      );
+      setSelectedRepositoryId((current) => {
+        if (current && items.some((item) => item.id === current)) return current;
+        // Prefer first indexed repository with code chunks so Chat works immediately
+        const hasChunks = items.find((item) => (item.indexedChunkCount ?? 0) > 0);
+        return hasChunks?.id ?? items[0]?.id ?? null;
+      });
     } catch (error) {
       setRepositoryError(error instanceof Error ? error.message : 'Could not load repositories.');
     } finally {

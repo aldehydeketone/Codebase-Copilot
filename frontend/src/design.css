@@ -1130,10 +1130,10 @@ body {
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
   text-align: left;
+  width: 100%;
 }
 
 .repo-card:hover {
@@ -1144,6 +1144,39 @@ body {
 .repo-card.selected {
   border-color: var(--accent);
   background-color: var(--bg-elevated);
+}
+
+.repo-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.repo-card-alert {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--warn-soft);
+  border: 1px solid var(--border-warn-soft);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+}
+
+.repo-card-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warn);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.repo-card-alert-text {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .repo-card-main {

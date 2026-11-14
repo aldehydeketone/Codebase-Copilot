@@ -80,46 +80,37 @@ export function RepositoryPanel({
                   if (e.key === 'Enter' || e.key === ' ') onSelect(repo);
                 }}
               >
-                <div className="repo-card-main">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FolderGit2 size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                    <h3 className="repo-card-name">{repo.name}</h3>
-                    <RepositoryStatus status={repo.indexingStatus} />
-                    {isSelected && (
-                      <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600, marginLeft: 4 }}>
-                        [active]
-                      </span>
-                    )}
+                <div className="repo-card-row">
+                  <div className="repo-card-main">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <FolderGit2 size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                      <h3 className="repo-card-name">{repo.name}</h3>
+                      <RepositoryStatus status={repo.indexingStatus} />
+                      {isSelected && (
+                        <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600, marginLeft: 4 }}>
+                          [active]
+                        </span>
+                      )}
+                    </div>
+                    <p className="repo-card-path" title={repo.sourcePath}>
+                      {repo.sourcePath}
+                    </p>
                   </div>
-                  <p className="repo-card-path" title={repo.sourcePath}>
-                    {repo.sourcePath}
-                  </p>
-                </div>
 
-                <div className="repo-card-stats">
-                  <span>{repo.indexedFileCount} files</span>
-                  <span>{repo.indexedChunkCount} chunks</span>
-                  <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>{dateLabel(repo.createdAt)}</span>
+                  <div className="repo-card-stats">
+                    <span>{repo.indexedFileCount} files</span>
+                    <span>{repo.indexedChunkCount} chunks</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>{dateLabel(repo.createdAt)}</span>
+                  </div>
                 </div>
 
                 {repo.indexingStatus === 'COMPLETED_EMPTY' && (
-                  <div
-                    style={{
-                      width: '100%',
-                      marginTop: 8,
-                      padding: 10,
-                      backgroundColor: 'var(--warn-soft)',
-                      border: '1px solid rgba(210, 153, 34, 0.25)',
-                      borderRadius: 'var(--r-sm)',
-                      fontSize: 11,
-                    }}
-                    role="status"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warn)', fontWeight: 600 }}>
+                  <div className="repo-card-alert" role="status">
+                    <div className="repo-card-alert-header">
                       <AlertTriangle size={13} />
                       <span>Scan completed; no Java code was indexed.</span>
                     </div>
-                    <p style={{ marginTop: 4, color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.4 }}>
+                    <p className="repo-card-alert-text">
                       Add supported `.java` files to this folder or import a Java project, then refresh or import it again.
                     </p>
                   </div>

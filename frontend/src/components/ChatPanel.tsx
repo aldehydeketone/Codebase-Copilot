@@ -160,6 +160,18 @@ export function ChatPanel({ repository, onInspect }: ChatPanelProps) {
                   <span className="console-spec-val font-mono">{repository.indexingStatus || 'READY'}</span>
                 </div>
               </div>
+
+              {repository.indexedChunkCount === 0 && (
+                <div className="repo-card-alert" style={{ marginTop: 16 }} role="status">
+                  <div className="repo-card-alert-header">
+                    <AlertCircle size={13} />
+                    <span>Zero Indexed Chunks</span>
+                  </div>
+                  <p className="repo-card-alert-text">
+                    This repository has 0 vector chunks indexed. Queries will return no matches. Use the repository switcher in the top bar to switch to an indexed repository (e.g. <strong>CodebaseCopilot</strong>).
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="message-feed" aria-live="polite">
